@@ -575,7 +575,7 @@ msg_info "Installing & configuring Podman & Installing podman-compose"
   virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
 # Make Podman containers linger
-#  virt-customize -q -a "${FILE}" --run-command "sudo loginctl enable-linger podman" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "loginctl enable-linger podman" >/dev/null &&
 msg_ok "Podman installed"
 # Only configure privileged ports if user confirmed
 #if [ "$OPEN_PORTS" = "yes" ]; then
