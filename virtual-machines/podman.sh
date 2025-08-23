@@ -500,7 +500,7 @@ virt-customize -q -a "${FILE}" --install qemu-guest-agent,apt-transport-https,ca
   virt-customize -q -a "${FILE}" --run-command "echo 'rootless = true' > /home/podman/containers/containers.conf" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "mkdir --parents /home/podman/.config/containers" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "echo "\""unqualified-search-registries = ['docker.io'] >> /home/podman/.config/containers/registries.conf"\""" >/dev/null &&
+virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo apt-get install fail2ban -y" >/dev/null &&
