@@ -543,12 +543,12 @@ msg_info "Installing, configuring and rebooting SSH"
   virt-customize -q -a "${FILE}" --run-command "sudo systemctl restart sshd" >/dev/null
 msg_ok "SSH installed"
 # Enables large file caching for file servers.
-if [ "$OPEN_PORTS" = "yes" ]; then
+if [ "$ENABLE_CACHING" = "yes" ]; then
   msg_info "Enabling better caching for file servers."
   virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e 'vm.swappiness=10\nvm.vfs_cache_pressure = 50\nfs.inotify.max_user_watches=262144' >> /etc/sysctl.conf\"" >/dev/null
-  msg_ok "Configuring privileged ports 80+ for Podman containers"
+  msg_ok "Better file server caching enabled"
 else
-  msg_ok "Skipping privileged ports 80+ configuration for Podman containers"
+  msg_ok "Skipping better file server caching"
 fi
 msg_info "Expanding root partition to use full disk space"
 qemu-img create -f qcow2 expanded.qcow2 ${DISK_SIZE} >/dev/null 2>&1
