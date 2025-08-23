@@ -390,6 +390,35 @@ function advanced_settings() {
   else
     exit-script
   fi
+
+  # Add subnet configuration question
+  while true; do
+    if SUBNET=$(whiptail --backtitle "Proxmox VE Helper Scripts" --inputbox "Set Subnet (e.g., 192.168.1.0/24)" 8 58 --title "SUBNET" --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
+      if [ -z "$SUBNET" ]; then
+        msg_error "Subnet cannot be empty."
+        continue
+      fi
+      # Validate subnet format (basic validation)
+      if [[ "$SUBNET" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}$ ]]; then
+        echo -e "${DEFAULT}${BOLD}${DGN}Subnet: ${BGN}$SUBNET${CL}"
+        break
+      else
+        msg_error "Invalid subnet format. Please use CIDR notation (e.g., 192.168.1.0/24)."
+      fi
+    else
+      exit-script
+    fi
+  done
+
+  # Add question for opening ports starting at 80
+  if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "OPEN PORTS" --yesno "Open ports starting at 80 for Podman containers?" 10 58); then
+    echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}yes${CL}"
+    OPEN_PORTS="yes"
+  else
+    echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}no${CL}"
+    OPEN_PORTS="no"
+  fi
+
   if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "START VIRTUAL MACHINE" --yesno "Start VM when completed?" 10 58); then
     echo -e "${GATEWAY}${BOLD}${DGN}Start VM when completed: ${BGN}yes${CL}"
     START_VM="yes"
@@ -410,6 +439,35 @@ function start_script() {
     header_info
     echo -e "${DEFAULT}${BOLD}${BL}Using Default Settings${CL}"
     default_settings
+
+    # Add subnet configuration for default settings
+    while true; do
+      if SUBNET=$(whiptail --backtitle "Proxmox VE Helper Scripts" --inputbox "Set Subnet (e.g., 192.168.1.0/24)" 8 58 --title "SUBNET" --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
+        if [ -z "$SUBNET" ]; then
+          msg_error "Subnet cannot be empty."
+          continue
+        fi
+        # Validate subnet format (basic validation)
+        if [[ "$SUBNET" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}$ ]]; then
+          echo -e "${DEFAULT}${BOLD}${DGN}Subnet: ${BGN}$SUBNET${CL}"
+          break
+        else
+          msg_error "Invalid subnet format. Please use CIDR notation (e.g., 192.168.1.0/24)."
+        fi
+      else
+        exit-script
+      fi
+    done
+
+    # Add question for opening ports starting at 80 for default settings
+    if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "OPEN PORTS" --yesno "Open ports starting at 80 for Podman containers?" 10 58); then
+      echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}yes${CL}"
+      OPEN_PORTS="yes"
+    else
+      echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}no${CL}"
+      OPEN_PORTS="no"
+    fi
+
   else
     header_info
     echo -e "${ADVANCED}${BOLD}${RD}Using Advanced Settings${CL}"
@@ -488,6 +546,10 @@ fi
   virt-customize -q -a "${FILE}" --install qemu-guest-agent,apt-transport-https,ca-certificates,curl,gnupg,software-properties-common,lsb-release >/dev/null &&
   virt-customize -q -a "${FILE}" --hostname "${HN}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
+msg_info "Enabling firewall"
+  virt-customize -q -a "${FILE}" --run-command "sudo ufw default deny incoming" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo ufw default allow outgoing" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow from ${SUBNET}" >/dev/null &&
 msg_info "Creating Podman user and locking root"
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
@@ -509,9 +571,14 @@ msg_info "Configuring and securing Podman"
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
 # Make Podman containers linger
   virt-customize -q -a "${FILE}" --run-command "sudo loginctl enable-linger rairdev" >/dev/null &&
-# Opening ports starting at 80 for Podman containers
+# Only configure privileged ports if user confirmed
+if [ "$OPEN_PORTS" = "yes" ]; then
+  msg_info "Configuring privileged ports for Podman containers"
   virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e '# Lowering privileged ports to 80 to allow us to run rootless Podman containers on lower ports\n# From: www.simplehomelab.com\n# default: 1024\nnet.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.d/podman-privileged-ports.conf\"" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf" >/dev/null
+else
+  msg_info "Skipping privileged ports configuration for Podman containers"
+fi
 msg_info "Installing SSH"
   virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh -y" >/dev/null &&
 msg_info "Installing Fail2ban"
