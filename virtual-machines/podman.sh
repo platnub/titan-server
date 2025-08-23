@@ -547,15 +547,6 @@ fi
   virt-customize -q -a "${FILE}" --install qemu-guest-agent,apt-transport-https,ca-certificates,curl,gnupg,software-properties-common,lsb-release >/dev/null &&
   virt-customize -q -a "${FILE}" --hostname "${HN}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
-#msg_info "Enabling firewall"
-#  virt-customize -q -a "${FILE}" --run-command "sudo apt install ufw" >/dev/null &&
-#  virt-customize -q -a "${FILE}" --run-command "sudo ufw enable" >/dev/null &&
-#  virt-customize -q -a "${FILE}" --run-command "sudo ufw default deny incoming" >/dev/null &&
-#  virt-customize -q -a "${FILE}" --run-command "sudo ufw default allow outgoing" >/dev/null &&
-#  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow 3128" >/dev/null &&
-#  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow ${SSH_PORT}" >/dev/null &&
-#  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow from ${SUBNET}" >/dev/null &&
-#  virt-customize -q -a "${FILE}" --run-command "sudo ufw reload" >/dev/null &&
 msg_info "Creating Podman user and locking root"
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
@@ -574,18 +565,16 @@ msg_info "Installing & configuring Podman & Installing podman-compose"
   virt-customize -q -a "${FILE}" --run-command "mkdir --parents /home/podman/.config/containers" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
-# Make Podman containers linger
-  virt-customize -q -a "${FILE}" --run-command "loginctl enable-linger podman" >/dev/null &&
 msg_ok "Podman installed"
 # Only configure privileged ports if user confirmed
-#if [ "$OPEN_PORTS" = "yes" ]; then
-#  msg_info "Configuring privileged ports 80\+ for Podman containers"
-#  virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e '# Lowering privileged ports to 80 to allow us to run rootless Podman containers on lower ports\n# default: 1024\nnet.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.d/podman-privileged-ports.conf\"" >/dev/null &&
-#  virt-customize -q -a "${FILE}" --run-command "sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf" >/dev/null
-#  msg_ok "Configuring privileged ports 80\+ for Podman containers"
-#else
-#  msg_ok "Skipping privileged ports 80\+ configuration for Podman containers"
-#fi
+if [ "$OPEN_PORTS" = "yes" ]; then
+  msg_info "Configuring privileged ports 80\+ for Podman containers"
+  virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e '# Lowering privileged ports to 80 to allow us to run rootless Podman containers on lower ports\n# default: 1024\nnet.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.d/podman-privileged-ports.conf\"" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf" >/dev/null
+  msg_ok "Configuring privileged ports 80\+ for Podman containers"
+else
+  msg_ok "Skipping privileged ports 80\+ configuration for Podman containers"
+fi
 msg_info "Installing, configuring and rebooting SSH"
   virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo apt-get install fail2ban -y" >/dev/null &&
@@ -646,3 +635,4 @@ if [ "$START_VM" == "yes" ]; then
 fi
 post_update_to_api "done" "none"
 msg_ok "Completed Successfully!\n"
+msg_warning "Make sure to run \"sudo loginctl enable-linger podman\" on the VM otherwise containers won't keep running."
