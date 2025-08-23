@@ -1,4 +1,1 @@
-Run any script in Proxmox shell:
-```
-bash -c "$(curl -fsSL <url>)"
-```
+Check the [wiki](https://github.com/platnub/titan-server/wiki)
