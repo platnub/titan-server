@@ -380,12 +380,21 @@ function advanced_settings() {
   fi
 
   # Add question for opening ports starting at 80
-  if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "S" --yesno "Open ports starting at 80 for Podman containers?" 10 58); then
+  if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "S" --yesno --defaultno "Open ports starting at 80 for Podman containers?" 10 58); then
     echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}yes${CL}"
     OPEN_PORTS="yes"
   else
     echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}no${CL}"
     OPEN_PORTS="no"
+  fi
+  
+  # Add question for enabling caching for file servers
+  if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "S" --yesno --defaultno "Enable caching for file servers (cloud storage/media like Jellyfin andPlex)" 10 58); then
+    echo -e "${DEFAULT}${BOLD}${DGN}Enable caching: ${BGN}yes${CL}"
+    ENABLE_CACHING="yes"
+  else
+    echo -e "${DEFAULT}${BOLD}${DGN}Enable caching: ${BGN}no${CL}"
+    ENABLE_CACHING="no"
   fi
 
   if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "START VIRTUAL MACHINE" --yesno "Start VM when completed?" 10 58); then
@@ -418,15 +427,6 @@ if SUDO_PASSWORD=$(whiptail --backtitle "Proxmox VE Helper Scripts" --passwordbo
 else
   exit-script
 fi
-
-    # Add question for opening ports starting at 80 for default settings
-    if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "OPEN PORTS" --yesno "Open ports 80-1023 for Podman containers?" 10 58); then
-      echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}yes${CL}"
-      OPEN_PORTS="yes"
-    else
-      echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}no${CL}"
-      OPEN_PORTS="no"
-    fi
 
   else
     header_info
@@ -540,8 +540,16 @@ msg_info "Installing, configuring and rebooting SSH"
   virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo apt-get install fail2ban -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo sed -i 's/\#Port 22/Port ${SSH_PORT}/' /etc/ssh/sshd_config" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sudo systemctl restart sshd" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo systemctl restart sshd" >/dev/null
 msg_ok "SSH installed"
+# Enables large file caching for file servers.
+if [ "$OPEN_PORTS" = "yes" ]; then
+  msg_info "Enabling better caching for file servers."
+  virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e 'vm.swappiness=10\nvm.vfs_cache_pressure = 50\nfs.inotify.max_user_watches=262144' >> /etc/sysctl.conf\"" >/dev/null
+  msg_ok "Configuring privileged ports 80+ for Podman containers"
+else
+  msg_ok "Skipping privileged ports 80+ configuration for Podman containers"
+fi
 msg_info "Expanding root partition to use full disk space"
 qemu-img create -f qcow2 expanded.qcow2 ${DISK_SIZE} >/dev/null 2>&1
 virt-resize --expand /dev/sda1 ${FILE} expanded.qcow2 >/dev/null 2>&1
