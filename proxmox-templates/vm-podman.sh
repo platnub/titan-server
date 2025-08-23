@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Modified (23-08-2025) to use Podman instead of Docker:
 # Copyright (c) 2021-2025 community-scripts ORG
 # Author: thost96 (thost96) | Co-Author: michelroegl-brunner
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
