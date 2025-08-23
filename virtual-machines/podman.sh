@@ -546,12 +546,15 @@ fi
   virt-customize -q -a "${FILE}" --install qemu-guest-agent,apt-transport-https,ca-certificates,curl,gnupg,software-properties-common,lsb-release >/dev/null &&
   virt-customize -q -a "${FILE}" --hostname "${HN}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
-msg_info "Enabling firewall"
-  virt-customize -q -a "${FILE}" --run-command "sudo ufw enable" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow 3128" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow from ${SUBNET}" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sudo ufw default deny incoming" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sudo ufw default allow outgoing" >/dev/null &&
+#msg_info "Enabling firewall"
+#  virt-customize -q -a "${FILE}" --run-command "sudo apt install ufw" >/dev/null &&
+#  virt-customize -q -a "${FILE}" --run-command "sudo ufw enable" >/dev/null &&
+#  virt-customize -q -a "${FILE}" --run-command "sudo ufw default deny incoming" >/dev/null &&
+#  virt-customize -q -a "${FILE}" --run-command "sudo ufw default allow outgoing" >/dev/null &&
+#  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow 3128" >/dev/null &&
+#  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow ${SSH_PORT}" >/dev/null &&
+#  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow from ${SUBNET}" >/dev/null &&
+#  virt-customize -q -a "${FILE}" --run-command "sudo ufw reload" >/dev/null &&
 msg_info "Creating Podman user and locking root"
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
@@ -605,6 +608,17 @@ qm set $VMID \
   -serial0 socket >/dev/null
 qm resize $VMID scsi0 8G >/dev/null
 qm set $VMID --agent enabled=1 >/dev/null
+
+msg_info "Configuring VM firewall rules"
+# Create firewall configuration
+qm set $VMID --firewall enable=1
+# Allow SSH on the specified port
+qm set $VMID --firewall rule add in=in,action=accept,proto=tcp,dport=${SSH_PORT},enable=1
+# Deny all other incoming traffic
+qm set $VMID --firewall policy in=drop,out=accept,enable=1
+# Allow outgoing traffic
+qm set $VMID --firewall rule add out=out,action=accept,enable=1
+
 DESCRIPTION=$(
   cat <<EOF
 <div align='center'>
