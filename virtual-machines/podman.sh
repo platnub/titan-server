@@ -547,9 +547,10 @@ fi
   virt-customize -q -a "${FILE}" --hostname "${HN}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
 msg_info "Enabling firewall"
+  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow 3128" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow from ${SUBNET}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo ufw default deny incoming" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo ufw default allow outgoing" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow from ${SUBNET}" >/dev/null &&
 msg_info "Creating Podman user and locking root"
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
