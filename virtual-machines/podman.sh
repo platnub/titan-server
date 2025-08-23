@@ -571,7 +571,8 @@ msg_ok "Podman installed"
 if [ "$OPEN_PORTS" = "yes" ]; then
   msg_info "Configuring privileged ports 80\+ for Podman containers"
   virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e '# Lowering privileged ports to 80 to allow us to run rootless Podman containers on lower ports\n# default: 1024\nnet.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.d/podman-privileged-ports.conf\"" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf" >/dev/null
+#  virt-customize -q -a "${FILE}" --run-command "sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf" >/dev/null
+qm guest exec $VMID 'sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf'
   msg_ok "Configuring privileged ports 80\+ for Podman containers"
 else
   msg_ok "Skipping privileged ports 80\+ configuration for Podman containers"
