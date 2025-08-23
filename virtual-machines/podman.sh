@@ -381,25 +381,6 @@ function advanced_settings() {
     exit-script
   fi
 
-  # Add subnet configuration question
-  while true; do
-    if SUBNET=$(whiptail --backtitle "Proxmox VE Helper Scripts" --inputbox "Set Subnet (e.g., 192.168.1.0/24)" 8 58 --title "SUBNET" --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
-      if [ -z "$SUBNET" ]; then
-        msg_error "Subnet cannot be empty."
-        continue
-      fi
-      # Validate subnet format (basic validation)
-      if [[ "$SUBNET" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}$ ]]; then
-        echo -e "${DEFAULT}${BOLD}${DGN}Subnet: ${BGN}$SUBNET${CL}"
-        break
-      else
-        msg_error "Invalid subnet format. Please use CIDR notation (e.g., 192.168.1.0/24)."
-      fi
-    else
-      exit-script
-    fi
-  done
-
   # Add question for opening ports starting at 80
   if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "S" --yesno "Open ports starting at 80 for Podman containers?" 10 58); then
     echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}yes${CL}"
@@ -441,25 +422,6 @@ if SUDO_PASSWORD=$(whiptail --backtitle "Proxmox VE Helper Scripts" --passwordbo
 else
   exit-script
 fi
-
-# Add subnet configuration for default settings
-while true; do
-  if SUBNET=$(whiptail --backtitle "Proxmox VE Helper Scripts" --inputbox "Set Subnet (e.g., 192.168.1.0/24)" 8 58 --title "SUBNET" --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
-    if [ -z "$SUBNET" ]; then
-      msg_error "Subnet cannot be empty."
-      continue
-    fi
-    # Validate subnet format (basic validation)
-    if [[ "$SUBNET" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}$ ]]; then
-      echo -e "${DEFAULT}${BOLD}${DGN}Subnet: ${BGN}$SUBNET${CL}"
-      break
-    else
-      msg_error "Invalid subnet format. Please use CIDR notation (e.g., 192.168.1.0/24)."
-    fi
-  else
-    exit-script
-  fi
-done
 
     # Add question for opening ports starting at 80 for default settings
     if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "OPEN PORTS" --yesno "Open ports 80-1023 for Podman containers?" 10 58); then
