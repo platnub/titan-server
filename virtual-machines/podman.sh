@@ -514,7 +514,9 @@ msg_info "Creating Podman user and locking root"
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo usermod -aG sudo podman" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "echo 'podman:${SUDO_PASSWORD}' | sudo chpasswd" >/dev/null &&
+#  virt-customize -q -a ${FILE}" --password-crypto 
+  virt-customize -q -a "${FILE}"  --password-crypto sha512 --password podman:${SUDO_PASSWORD}
+#  virt-customize -q -a "${FILE}" --run-command "echo 'podman:${SUDO_PASSWORD}' | sudo chpasswd" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo passwd -l root" >/dev/null &&
 msg_ok "Podman user created and root locked"
 msg_info "Installing & configuring Podman & Installing podman-compose"
@@ -528,6 +530,7 @@ msg_info "Installing & configuring Podman & Installing podman-compose"
   virt-customize -q -a "${FILE}" --run-command "mkdir --parents /home/podman/.config/containers" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
+  virt-customize -q -a "${FILE}" --firstboot-command "sudo loginctl enable-linger podman" >/dev/null
 msg_ok "Podman installed"
 # Only configure privileged ports if user confirmed
 if [ "$OPEN_PORTS" = "yes" ]; then
@@ -598,4 +601,3 @@ if [ "$START_VM" == "yes" ]; then
 fi
 post_update_to_api "done" "none"
 msg_ok "Completed Successfully!\n"
-msg_warning "Make sure to run \"sudo loginctl enable-linger podman\" on the VM otherwise containers won't keep running."
