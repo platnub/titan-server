@@ -3,8 +3,20 @@
 # Function to create a new container
 create_container() {
     read -p "Enter the container name: " container_name
+    read -p "Enter the username for the container: " username
+    read -p "Enter the user ID for the container: " user_id
+
+    # Create container directory
     mkdir -p "/home/podman/containers/$container_name"
-    chmod -R 755 "/home/podman/containers/$container_name"
+
+    # Set recursive permissions
+    sudo setfacl -Rdm o::--- "/home/podman/containers/$container_name"
+
+    # Create user inside the container
+    podman run --rm -it -v "/home/podman/containers/$container_name:/data" alpine sh -c "adduser -D -u $user_id $username && chown -R $username:$username /data"
+
+    # Set ownership of the folder
+    sudo chown -R "$username:$username" "/home/podman/containers/$container_name"
 
     # Create compose.yaml file
     nano "/home/podman/containers/$container_name/compose.yaml"
@@ -15,7 +27,7 @@ create_container() {
         nano "/home/podman/containers/$container_name/.env"
     fi
 
-    echo "Container $container_name created successfully."
+    echo "Container $container_name created successfully with user $username."
 }
 
 # Function to list all containers
