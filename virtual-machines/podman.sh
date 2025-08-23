@@ -411,7 +411,7 @@ function advanced_settings() {
   done
 
   # Add question for opening ports starting at 80
-  if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "OPEN PORTS" --yesno "Open ports starting at 80 for Podman containers?" 10 58); then
+  if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "S" --yesno "Open ports starting at 80 for Podman containers?" 10 58); then
     echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}yes${CL}"
     OPEN_PORTS="yes"
   else
@@ -460,11 +460,11 @@ function start_script() {
     done
 
     # Add question for opening ports starting at 80 for default settings
-    if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "OPEN PORTS" --yesno "Open ports starting at 80 for Podman containers?" 10 58); then
-      echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}yes${CL}"
+    if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "OPEN PORTS" --yesno "Open ports 80-1023 for Podman containers?" 10 58); then
+      echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80 (default: 1024): ${BGN}yes${CL}"
       OPEN_PORTS="yes"
     else
-      echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}no${CL}"
+      echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80 (default: 1024): ${BGN}no${CL}"
       OPEN_PORTS="no"
     fi
 
