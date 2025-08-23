@@ -7,11 +7,14 @@ source /dev/stdin <<<$(curl -fsSL https://raw.githubusercontent.com/community-sc
 function header_info() {
   clear
   cat <<"EOF"
-    ____             __                _    ____  ___
-   / __ \____  _____/ /_____  _____   | |  / /  |/  /
-  / / / / __ \/ ___/ //_/ _ \/ ___/   | | / / /|_/ /
- / /_/ / /_/ / /__/ ,< /  __/ /       | |/ / /  / /
-/_____/\____/\___/_/|_|\___/_/        |___/_/  /_/
+ /$$     /$$                                  /$$   /$$                    
+|  $$   /$$/                                 | $$$ | $$                    
+ \  $$ /$$//$$$$$$  /$$   /$$  /$$$$$$       | $$$$| $$  /$$$$$$  /$$$$$$$ 
+  \  $$$$//$$__  $$| $$  | $$ /$$__  $$      | $$ $$ $$ |____  $$| $$__  $$
+   \  $$/| $$  \ $$| $$  | $$| $$  \__/      | $$  $$$$  /$$$$$$$| $$  \ $$
+    | $$ | $$  | $$| $$  | $$| $$            | $$\  $$$ /$$__  $$| $$  | $$
+    | $$ |  $$$$$$/|  $$$$$$/| $$            | $$ \  $$|  $$$$$$$| $$  | $$
+    |__/  \______/  \______/ |__/            |__/  \__/ \_______/|__/  |__/
 EOF
 }
 header_info
@@ -483,7 +486,7 @@ virt-customize -q -a "${FILE}" --install qemu-guest-agent,apt-transport-https,ca
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo usermod -aG sudo podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo passwd -l root" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo apt-get install fail2ban -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo sed -i 's/\#Port 22/Port ${SSH_PORT}/' /etc/ssh/sshd_config" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo systemctl restart sshd" >/dev/null &&
