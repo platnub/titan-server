@@ -500,15 +500,18 @@ msg_info "Adding Podman to Debian 12 Qcow2 Disk Image"
 msg_info "Installing Podman Compose"
   virt-customize -q -a "${FILE}" --run-command "apt-get install -y podman-compose" >/dev/null &&
 msg_info "Configuring and securing Podman"
-  # Makes Podman containers run rootless
+# Makes Podman containers run rootless
   virt-customize -q -a "${FILE}" --run-command "mkdir -p /home/podman/containers" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo 'rootless = true' > /home/podman/containers/containers.conf" >/dev/null &&
-  # Add docker.io as a registry
+# Add docker.io as a registry
   virt-customize -q -a "${FILE}" --run-command "mkdir --parents /home/podman/.config/containers" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
-  # Make Podman containers linger
+# Make Podman containers linger
   virt-customize -q -a "${FILE}" --run-command "sudo loginctl enable-linger rairdev" >/dev/null &&
+# Opening ports starting at 80 for Podman containers
+  virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e '# Lowering privileged ports to 80 to allow us to run rootless Podman containers on lower ports\n# From: www.simplehomelab.com\n# default: 1024\nnet.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.d/podman-privileged-ports.conf\"" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf" >/dev/null &&
 msg_info "Installing SSH"
   virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh -y" >/dev/null &&
 msg_info "Installing Fail2ban"
