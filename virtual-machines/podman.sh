@@ -291,16 +291,6 @@ function advanced_settings() {
   else
     exit-script
   fi
-  if SUDO_PASSWORD=$(whiptail --backtitle "Proxmox VE Helper Scripts" --passwordbox "Set Sudo Password" 8 58 --title "SUDO PASSWORD" --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
-  if [ -z $SUDO_PASSWORD ]; then
-    msg_error "Sudo password cannot be empty."
-    exit-script
-  else
-    echo -e "${DEFAULT}${BOLD}${DGN}Podman user password (sudo): ${BGN}*****${CL}"
-  fi
-  else
-    exit-script
-  fi
   if CPU_TYPE1=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "CPU MODEL" --radiolist "Choose" --cancel-button Exit-Script 10 58 2 \
     "0" "KVM64 (Default)" ON \
     "1" "Host" OFF \
@@ -387,6 +377,17 @@ function advanced_settings() {
     else
       echo -e "${DEFAULT}${BOLD}${DGN}SSH Port: ${BGN}$SSH_PORT${CL}"
     fi
+  else
+    exit-script
+  fi
+
+  if SUDO_PASSWORD=$(whiptail --backtitle "Proxmox VE Helper Scripts" --passwordbox "Set Sudo Password" 8 58 --title "SUDO PASSWORD" --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
+  if [ -z $SUDO_PASSWORD ]; then
+    msg_error "Sudo password cannot be empty."
+    exit-script
+  else
+    echo -e "${DEFAULT}${BOLD}${DGN}Podman user password (sudo): ${BGN}*****${CL}"
+  fi
   else
     exit-script
   fi
@@ -611,13 +612,7 @@ qm set $VMID --agent enabled=1 >/dev/null
 
 msg_info "Configuring VM firewall rules"
 # Create firewall configuration
-qm set $VMID --firewall enable=1
-# Allow SSH on the specified port
-qm set $VMID --firewall rule add in=in,action=accept,proto=tcp,dport=${SSH_PORT},enable=1
-# Deny all other incoming traffic
-qm set $VMID --firewall policy in=drop,out=accept,enable=1
-# Allow outgoing traffic
-qm set $VMID --firewall rule add out=out,action=accept,enable=1
+qm set $VMID --net firewall=1
 
 DESCRIPTION=$(
   cat <<EOF
