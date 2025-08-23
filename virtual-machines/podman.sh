@@ -414,8 +414,6 @@ if SUDO_PASSWORD=$(whiptail --backtitle "Proxmox VE Helper Scripts" --passwordbo
   if [ -z $SUDO_PASSWORD ]; then
     msg_error "Sudo password cannot be empty."
     exit-script
-  else
-    echo -e "${DEFAULT}${BOLD}${DGN}Podman user password (sudo): ${BGN}*****${CL}"
   fi
 else
   exit-script
