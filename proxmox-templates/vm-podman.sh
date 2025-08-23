@@ -193,6 +193,7 @@ function default_settings() {
   MAC="$GEN_MAC"
   VLAN=""
   MTU=""
+  SSH_PORT="22"
   START_VM="yes"
   METHOD="default"
   echo -e "${CONTAINERID}${BOLD}${DGN}Virtual Machine ID: ${BGN}${VMID}${CL}"
@@ -207,6 +208,7 @@ function default_settings() {
   echo -e "${MACADDRESS}${BOLD}${DGN}MAC Address: ${BGN}${MAC}${CL}"
   echo -e "${VLANTAG}${BOLD}${DGN}VLAN: ${BGN}Default${CL}"
   echo -e "${DEFAULT}${BOLD}${DGN}Interface MTU Size: ${BGN}Default${CL}"
+  echo -e "${DEFAULT}${BOLD}${DGN}SSH Port: ${BGN}${SSH_PORT}${CL}"
   echo -e "${GATEWAY}${BOLD}${DGN}Start VM when completed: ${BGN}yes${CL}"
   echo -e "${CREATING}${BOLD}${DGN}Creating a Podman VM using the above default settings${CL}"
 }
@@ -363,6 +365,16 @@ function advanced_settings() {
   else
     exit-script
   fi
+  if SSH_PORT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --inputbox "Set SSH Port (leave blank for default 22)" 8 58 --title "SSH PORT" --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
+    if [ -z $SSH_PORT ]; then
+      SSH_PORT="22"
+      echo -e "${DEFAULT}${BOLD}${DGN}SSH Port: ${BGN}$SSH_PORT${CL}"
+    else
+      echo -e "${DEFAULT}${BOLD}${DGN}SSH Port: ${BGN}$SSH_PORT${CL}"
+    fi
+  else
+    exit-script
+  fi
   if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "START VIRTUAL MACHINE" --yesno "Start VM when completed?" 10 58); then
     echo -e "${GATEWAY}${BOLD}${DGN}Start VM when completed: ${BGN}yes${CL}"
     START_VM="yes"
@@ -462,8 +474,19 @@ msg_info "Adding Podman to Debian 12 Qcow2 Disk Image"
 virt-customize -q -a "${FILE}" --install qemu-guest-agent,apt-transport-https,ca-certificates,curl,gnupg,software-properties-common,lsb-release >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl enable podman" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "apt-get install -y podman-compose" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "mkdir -p /etc/containers" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "echo 'rootless = true' > /etc/containers/containers.conf" >/dev/null &&
   virt-customize -q -a "${FILE}" --hostname "${HN}" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null
+  virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo usermod -aG sudo podman" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo passwd -l root" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo apt-get install fail2ban -y" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo sed -i 's/\#Port 22/Port ${SSH_PORT}/' /etc/ssh/sshd_config" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo systemctl restart sshd" >/dev/null &&
 msg_ok "Added Podman to Debian 12 Qcow2 Disk Image successfully"
 msg_info "Expanding root partition to use full disk space"
 qemu-img create -f qcow2 expanded.qcow2 ${DISK_SIZE} >/dev/null 2>&1
