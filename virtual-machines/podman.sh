@@ -461,7 +461,7 @@ function start_script() {
     done
 
     # Add question for opening ports starting at 80 for default settings
-    if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "OPEN PORTS" --yesno "Open ports 80\-1023 for Podman containers?" 10 58); then
+    if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "OPEN PORTS" --yesno "Open ports 80-1023 for Podman containers?" 10 58); then
       echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}yes${CL}"
       OPEN_PORTS="yes"
     else
@@ -644,6 +644,5 @@ if [ "$START_VM" == "yes" ]; then
   qm start $VMID
   msg_ok "Started Podman VM"
 fi
-qm terminal $VMID --command "sudo loginctl enable-linger podman" >/dev/null 2>&1
 post_update_to_api "done" "none"
 msg_ok "Completed Successfully!\n"
