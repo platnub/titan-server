@@ -562,15 +562,11 @@ msg_info "Creating Podman user and locking root"
   virt-customize -q -a "${FILE}" --run-command "sudo usermod -aG sudo podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo 'podman:${SUDO_PASSWORD}' | sudo chpasswd" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo passwd -l root" >/dev/null &&
-msg_ok ""
-msg_info "Adding Podman to Debian 12 Qcow2 Disk Image"
+msg_ok "Podman user created and root locked"
+msg_info "Installing Podman & podman-compose & configuring"
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl enable podman" >/dev/null &&
-msg_ok ""
-msg_info "Installing Podman Compose"
   virt-customize -q -a "${FILE}" --run-command "apt-get install -y podman-compose" >/dev/null &&
-msg_ok ""
-msg_info "Configuring and securing Podman"
 # Makes Podman containers run rootless
   virt-customize -q -a "${FILE}" --run-command "mkdir -p /home/podman/containers" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo 'rootless = true' > /home/podman/containers/containers.conf" >/dev/null &&
@@ -580,6 +576,7 @@ msg_info "Configuring and securing Podman"
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
 # Make Podman containers linger
 #  virt-customize -q -a "${FILE}" --run-command "sudo loginctl enable-linger podman" >/dev/null &&
+msg_ok "Podman install"
 # Only configure privileged ports if user confirmed
 #if [ "$OPEN_PORTS" = "yes" ]; then
 #  msg_info "Configuring privileged ports 80\+ for Podman containers"
@@ -594,7 +591,7 @@ msg_info "Installing, configuring and rebooting SSH"
   virt-customize -q -a "${FILE}" --run-command "sudo apt-get install fail2ban -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo sed -i 's/\#Port 22/Port ${SSH_PORT}/' /etc/ssh/sshd_config" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo systemctl restart sshd" >/dev/null &&
-msg_ok "Installing, configuring and rebooting SSH"
+msg_ok "SSH installed"
 msg_info "Expanding root partition to use full disk space"
 qemu-img create -f qcow2 expanded.qcow2 ${DISK_SIZE} >/dev/null 2>&1
 virt-resize --expand /dev/sda1 ${FILE} expanded.qcow2 >/dev/null 2>&1
