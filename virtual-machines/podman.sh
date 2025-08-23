@@ -575,15 +575,15 @@ msg_ok "Configuring and securing Podman"
   virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
 # Make Podman containers linger
-  virt-customize -q -a "${FILE}" --run-command "sudo loginctl enable-linger podman" >/dev/null &&
+#  virt-customize -q -a "${FILE}" --run-command "sudo loginctl enable-linger podman" >/dev/null &&
 # Only configure privileged ports if user confirmed
-if [ "$OPEN_PORTS" = "yes" ]; then
-  msg_ok "Configuring privileged ports 80\+ for Podman containers"
-  virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e '# Lowering privileged ports to 80 to allow us to run rootless Podman containers on lower ports\n# default: 1024\nnet.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.d/podman-privileged-ports.conf\"" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf" >/dev/null
-else
-  msg_info "Skipping privileged ports 80\+ configuration for Podman containers"
-fi
+#if [ "$OPEN_PORTS" = "yes" ]; then
+#  msg_ok "Configuring privileged ports 80\+ for Podman containers"
+#  virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e '# Lowering privileged ports to 80 to allow us to run rootless Podman containers on lower ports\n# default: 1024\nnet.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.d/podman-privileged-ports.conf\"" >/dev/null &&
+#  virt-customize -q -a "${FILE}" --run-command "sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf" >/dev/null
+#else
+#  msg_info "Skipping privileged ports 80\+ configuration for Podman containers"
+#fi
 msg_info "Installing SSH"
   virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh -y" >/dev/null &&
 msg_info "Installing Fail2ban"
