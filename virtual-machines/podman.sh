@@ -563,7 +563,7 @@ msg_info "Creating Podman user and locking root"
   virt-customize -q -a "${FILE}" --run-command "echo 'podman:${SUDO_PASSWORD}' | sudo chpasswd" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo passwd -l root" >/dev/null &&
 msg_ok "Podman user created and root locked"
-msg_info "Installing Podman & podman-compose & configuring"
+msg_info "Installing & configuring Podman & Installing podman-compose"
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl enable podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "apt-get install -y podman-compose" >/dev/null &&
@@ -576,7 +576,7 @@ msg_info "Installing Podman & podman-compose & configuring"
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
 # Make Podman containers linger
 #  virt-customize -q -a "${FILE}" --run-command "sudo loginctl enable-linger podman" >/dev/null &&
-msg_ok "Podman install"
+msg_ok "Podman installed"
 # Only configure privileged ports if user confirmed
 #if [ "$OPEN_PORTS" = "yes" ]; then
 #  msg_info "Configuring privileged ports 80\+ for Podman containers"
