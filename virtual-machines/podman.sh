@@ -514,9 +514,8 @@ msg_info "Creating Podman user and locking root"
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo usermod -aG sudo podman" >/dev/null &&
-#  virt-customize -q -a ${FILE}" --password-crypto 
-  virt-customize -q -a "${FILE}"  --password-crypto sha512 --password podman:${SUDO_PASSWORD}
-#  virt-customize -q -a "${FILE}" --run-command "echo 'podman:${SUDO_PASSWORD}' | sudo chpasswd" >/dev/null &&
+#  virt-customize -q -a "${FILE}"  --password-crypto sha512 --password podman:${SUDO_PASSWORD}
+  virt-customize -q -a "${FILE}" --run-command "echo 'podman:${SUDO_PASSWORD}' | sudo chpasswd" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo passwd -l root" >/dev/null &&
 msg_ok "Podman user created and root locked"
 msg_info "Installing & configuring Podman & Installing podman-compose"
