@@ -576,7 +576,7 @@ msg_ok "Configuring and securing Podman"
   virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
 # Make Podman containers linger
-#  virt-customize -q -a "${FILE}" --run-command "sudo loginctl enable-linger podman" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo loginctl enable-linger podman" >/dev/null &&
 # Only configure privileged ports if user confirmed
 #if [ "$OPEN_PORTS" = "yes" ]; then
 #  msg_ok "Configuring privileged ports 80\+ for Podman containers"
@@ -612,7 +612,7 @@ qm set $VMID --agent enabled=1 >/dev/null
 
 msg_info "Configuring VM firewall rules"
 # Create firewall configuration
-qm set $VMID --net firewall=1
+qm set $VMID --net0 firewall=1
 
 DESCRIPTION=$(
   cat <<EOF
