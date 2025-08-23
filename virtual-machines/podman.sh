@@ -487,18 +487,21 @@ if ! command -v virt-customize &>/dev/null; then
 fi
 msg_info "Adding Podman to Debian 12 Qcow2 Disk Image"
 virt-customize -q -a "${FILE}" --install qemu-guest-agent,apt-transport-https,ca-certificates,curl,gnupg,software-properties-common,lsb-release >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y podman" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "systemctl enable podman" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "apt-get install -y podman-compose" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "mkdir -p /etc/containers" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "echo 'rootless = true' > /etc/containers/containers.conf" >/dev/null &&
   virt-customize -q -a "${FILE}" --hostname "${HN}" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo usermod -aG sudo podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo 'podman:${SUDO_PASSWORD}' | sudo chpasswd" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo passwd -l root" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y podman" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "systemctl enable podman" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "apt-get install -y podman-compose" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "mkdir -p /home/podman/containers" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "echo 'rootless = true' > /home/podman/containers/containers.conf" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "mkdir --parents /home/podman/.config/containers" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "echo "\""unqualified-search-registries = ['docker.io'] >> /home/podman/.config/containers/registries.conf"\""" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo apt-get install fail2ban -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo sed -i 's/\#Port 22/Port ${SSH_PORT}/' /etc/ssh/sshd_config" >/dev/null &&
