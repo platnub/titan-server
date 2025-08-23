@@ -500,11 +500,14 @@ msg_info "Adding Podman to Debian 12 Qcow2 Disk Image"
 msg_info "Installing Podman Compose"
   virt-customize -q -a "${FILE}" --run-command "apt-get install -y podman-compose" >/dev/null &&
 msg_info "Configuring and securing Podman"
+  # Makes Podman containers run rootless
   virt-customize -q -a "${FILE}" --run-command "mkdir -p /home/podman/containers" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo 'rootless = true' > /home/podman/containers/containers.conf" >/dev/null &&
+  # Add docker.io as a registry
   virt-customize -q -a "${FILE}" --run-command "mkdir --parents /home/podman/.config/containers" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
+  # Make Podman containers linger
   virt-customize -q -a "${FILE}" --run-command "sudo loginctl enable-linger rairdev" >/dev/null &&
 msg_info "Installing SSH"
   virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh -y" >/dev/null &&
