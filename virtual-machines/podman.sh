@@ -485,11 +485,9 @@ if ! command -v virt-customize &>/dev/null; then
   apt-get -qq install libguestfs-tools lsb-release -y >/dev/null
   msg_ok "Installed libguestfs-tools successfully"
 fi
-msg_info "Preparing Linux"
-  virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
   virt-customize -q -a "${FILE}" --install qemu-guest-agent,apt-transport-https,ca-certificates,curl,gnupg,software-properties-common,lsb-release >/dev/null &&
-msg_info "Setting hostname"
   virt-customize -q -a "${FILE}" --hostname "${HN}" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
 msg_info "Creating Podman user and locking root"
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
