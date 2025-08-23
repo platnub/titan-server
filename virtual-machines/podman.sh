@@ -556,18 +556,21 @@ fi
 #  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow ${SSH_PORT}" >/dev/null &&
 #  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow from ${SUBNET}" >/dev/null &&
 #  virt-customize -q -a "${FILE}" --run-command "sudo ufw reload" >/dev/null &&
-msg_ok "Creating Podman user and locking root"
+msg_info "Creating Podman user and locking root"
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo usermod -aG sudo podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo 'podman:${SUDO_PASSWORD}' | sudo chpasswd" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo passwd -l root" >/dev/null &&
-msg_ok "Adding Podman to Debian 12 Qcow2 Disk Image"
+msg_ok ""
+msg_info "Adding Podman to Debian 12 Qcow2 Disk Image"
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl enable podman" >/dev/null &&
-msg_ok "Installing Podman Compose"
+msg_ok ""
+msg_info "Installing Podman Compose"
   virt-customize -q -a "${FILE}" --run-command "apt-get install -y podman-compose" >/dev/null &&
-msg_ok "Configuring and securing Podman"
+msg_ok ""
+msg_info "Configuring and securing Podman"
 # Makes Podman containers run rootless
   virt-customize -q -a "${FILE}" --run-command "mkdir -p /home/podman/containers" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo 'rootless = true' > /home/podman/containers/containers.conf" >/dev/null &&
@@ -576,22 +579,22 @@ msg_ok "Configuring and securing Podman"
   virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
 # Make Podman containers linger
-  virt-customize -q -a "${FILE}" --run-command "sudo loginctl enable-linger podman" >/dev/null &&
+#  virt-customize -q -a "${FILE}" --run-command "sudo loginctl enable-linger podman" >/dev/null &&
 # Only configure privileged ports if user confirmed
 #if [ "$OPEN_PORTS" = "yes" ]; then
-#  msg_ok "Configuring privileged ports 80\+ for Podman containers"
+#  msg_info "Configuring privileged ports 80\+ for Podman containers"
 #  virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e '# Lowering privileged ports to 80 to allow us to run rootless Podman containers on lower ports\n# default: 1024\nnet.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.d/podman-privileged-ports.conf\"" >/dev/null &&
 #  virt-customize -q -a "${FILE}" --run-command "sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf" >/dev/null
+#  msg_ok "Configuring privileged ports 80\+ for Podman containers"
 #else
-#  msg_info "Skipping privileged ports 80\+ configuration for Podman containers"
+#  msg_ok "Skipping privileged ports 80\+ configuration for Podman containers"
 #fi
-msg_info "Installing SSH"
+msg_info "Installing, configuring and rebooting SSH"
   virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh -y" >/dev/null &&
-msg_info "Installing Fail2ban"
   virt-customize -q -a "${FILE}" --run-command "sudo apt-get install fail2ban -y" >/dev/null &&
-msg_info "Configuring and rebooting SSH"
   virt-customize -q -a "${FILE}" --run-command "sudo sed -i 's/\#Port 22/Port ${SSH_PORT}/' /etc/ssh/sshd_config" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo systemctl restart sshd" >/dev/null &&
+msg_ok "Installing, configuring and rebooting SSH"
 msg_info "Expanding root partition to use full disk space"
 qemu-img create -f qcow2 expanded.qcow2 ${DISK_SIZE} >/dev/null 2>&1
 virt-resize --expand /dev/sda1 ${FILE} expanded.qcow2 >/dev/null 2>&1
@@ -599,7 +602,7 @@ mv expanded.qcow2 ${FILE} >/dev/null 2>&1
 msg_ok "Expanded image to full size"
 msg_info "Creating a Podman VM"
 qm create $VMID -agent 1 ${MACHINE} -tablet 0 -localtime 1 -bios ovmf${CPU_TYPE} -cores $CORE_COUNT -memory $RAM_SIZE \
-  -name $HN -tags community-script -net0 virtio,bridge=$BRG,macaddr=$MAC$VLAN$MTU -onboot 1 -ostype l26 -scsihw virtio-scsi-pci
+  -name $HN -tags community-script -net0 virtio,bridge=$BRG,macaddr=$MAC$VLAN$MTU,firewall=1 -onboot 1 -ostype l26 -scsihw virtio-scsi-pci
 pvesm alloc $STORAGE $VMID $DISK0 4M 1>&/dev/null
 qm importdisk $VMID ${FILE} $STORAGE ${DISK_IMPORT:-} 1>&/dev/null
 qm set $VMID \
@@ -609,10 +612,6 @@ qm set $VMID \
   -serial0 socket >/dev/null
 qm resize $VMID scsi0 8G >/dev/null
 qm set $VMID --agent enabled=1 >/dev/null
-
-msg_info "Configuring VM firewall rules"
-# Create firewall configuration
-qm set $VMID --net0 firewall=1
 
 DESCRIPTION=$(
   cat <<EOF
@@ -648,5 +647,6 @@ if [ "$START_VM" == "yes" ]; then
   qm start $VMID
   msg_ok "Started Podman VM"
 fi
+qm terminal $VMID --command "sudo loginctl enable-linger podman" >/dev/null 2>&1
 post_update_to_api "done" "none"
 msg_ok "Completed Successfully!\n"
