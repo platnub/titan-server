@@ -547,6 +547,7 @@ fi
   virt-customize -q -a "${FILE}" --hostname "${HN}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
 msg_info "Enabling firewall"
+  virt-customize -q -a "${FILE}" --run-command "sudo ufw enable" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo ufw allow 3128" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo ufw allow from ${SUBNET}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo ufw default deny incoming" >/dev/null &&
