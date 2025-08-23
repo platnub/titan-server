@@ -200,7 +200,7 @@ function default_settings() {
   START_VM="yes"
   METHOD="default"
   echo -e "${CONTAINERID}${BOLD}${DGN}Virtual Machine ID: ${BGN}${VMID}${CL}"
-  echo -e "${CONTAINERTYPE}${BOLD}${DGN}Machine Type: ${BGN}i440fx${CL}"
+  echo -e "${CONTAINERTYPE}${BOLD}${DGN}Machine Type: ${BGN}q35${CL}"
   echo -e "${DISKSIZE}${BOLD}${DGN}Disk Size: ${BGN}${DISK_SIZE}${CL}"
   echo -e "${DISKSIZE}${BOLD}${DGN}Disk Cache: ${BGN}None${CL}"
   echo -e "${HOSTNAME}${BOLD}${DGN}Hostname: ${BGN}${HN}${CL}"
@@ -235,8 +235,8 @@ function advanced_settings() {
     fi
   done
   if MACH=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "MACHINE TYPE" --radiolist --cancel-button Exit-Script "Choose Type" 10 58 2 \
-    "i440fx" "Machine i440fx" ON \
-    "q35" "Machine q35" OFF \
+    "q35" "Machine q35" ON \
+    "i440fx" "Machine i440fx" OFF \
     3>&1 1>&2 2>&3); then
     if [ $MACH = q35 ]; then
       echo -e "${CONTAINERTYPE}${BOLD}${DGN}Machine Type: ${BGN}$MACH${CL}"
@@ -418,20 +418,19 @@ function start_script() {
     echo -e "${DEFAULT}${BOLD}${BL}Using Default Settings${CL}"
     default_settings
 
-# Sudo password
-if SUDO_PASSWORD=$(whiptail --backtitle "Proxmox VE Helper Scripts" --passwordbox "Set Sudo Password" 8 58 --title "SUDO PASSWORD" --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
-  if [ -z $SUDO_PASSWORD ]; then
-    msg_error "Sudo password cannot be empty."
-    exit-script
-  fi
-else
-  exit-script
-fi
-
   else
     header_info
     echo -e "${ADVANCED}${BOLD}${RD}Using Advanced Settings${CL}"
     advanced_settings
+  fi
+  # Sudo password
+  if SUDO_PASSWORD=$(whiptail --backtitle "Proxmox VE Helper Scripts" --passwordbox "Set Sudo Password" 8 58 --title "SUDO PASSWORD" --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
+    if [ -z $SUDO_PASSWORD ]; then
+      msg_error "Sudo password cannot be empty."
+      exit-script
+    fi
+  else
+    exit-script
   fi
 }
 check_root
@@ -506,14 +505,14 @@ fi
   virt-customize -q -a "${FILE}" --install qemu-guest-agent,apt-transport-https,ca-certificates,curl,gnupg,software-properties-common,lsb-release >/dev/null &&
   virt-customize -q -a "${FILE}" --hostname "${HN}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
-msg_info "Creating Podman user and locking root"
+msg_info "Creating Podman user and locking root user"
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo usermod -aG sudo podman" >/dev/null &&
 #  virt-customize -q -a "${FILE}"  --password-crypto sha512 --password podman:${SUDO_PASSWORD}
   virt-customize -q -a "${FILE}" --run-command "echo 'podman:${SUDO_PASSWORD}' | sudo chpasswd" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo passwd -l root" >/dev/null &&
-msg_ok "Podman user created and root locked"
+msg_ok "Podman user created and root user locked"
 msg_info "Installing & configuring Podman & Installing podman-compose"
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl enable podman" >/dev/null &&
