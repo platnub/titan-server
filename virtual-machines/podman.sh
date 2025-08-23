@@ -460,12 +460,12 @@ function start_script() {
     done
 
     # Add question for opening ports starting at 80 for default settings
-    if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "OPEN PORTS" --yesno "Open ports 80-1023 for Podman containers?" 10 58); then
-      echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}yes${CL}"
-      OPEN_PORTS="yes"
-    else
+    if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "OPEN PORTS" --yesno "Open ports 80\-1023 for Podman containers?" 10 58); then
       echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}no${CL}"
       OPEN_PORTS="no"
+    else
+      echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}yes${CL}"
+      OPEN_PORTS="yes"
     fi
 
   else
@@ -555,18 +555,18 @@ fi
 #  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow ${SSH_PORT}" >/dev/null &&
 #  virt-customize -q -a "${FILE}" --run-command "sudo ufw allow from ${SUBNET}" >/dev/null &&
 #  virt-customize -q -a "${FILE}" --run-command "sudo ufw reload" >/dev/null &&
-msg_info "Creating Podman user and locking root"
+msg_ok "Creating Podman user and locking root"
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo usermod -aG sudo podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo 'podman:${SUDO_PASSWORD}' | sudo chpasswd" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo passwd -l root" >/dev/null &&
-msg_info "Adding Podman to Debian 12 Qcow2 Disk Image"
+msg_ok "Adding Podman to Debian 12 Qcow2 Disk Image"
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl enable podman" >/dev/null &&
-msg_info "Installing Podman Compose"
+msg_ok "Installing Podman Compose"
   virt-customize -q -a "${FILE}" --run-command "apt-get install -y podman-compose" >/dev/null &&
-msg_info "Configuring and securing Podman"
+msg_ok "Configuring and securing Podman"
 # Makes Podman containers run rootless
   virt-customize -q -a "${FILE}" --run-command "mkdir -p /home/podman/containers" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo 'rootless = true' > /home/podman/containers/containers.conf" >/dev/null &&
@@ -578,11 +578,11 @@ msg_info "Configuring and securing Podman"
   virt-customize -q -a "${FILE}" --run-command "sudo loginctl enable-linger rairdev" >/dev/null &&
 # Only configure privileged ports if user confirmed
 if [ "$OPEN_PORTS" = "yes" ]; then
-  msg_info "Configuring privileged ports for Podman containers"
+  msg_ok "Configuring privileged ports 80\+ for Podman containers"
   virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e '# Lowering privileged ports to 80 to allow us to run rootless Podman containers on lower ports\n# default: 1024\nnet.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.d/podman-privileged-ports.conf\"" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf" >/dev/null
 else
-  msg_info "Skipping privileged ports configuration for Podman containers"
+  msg_info "Skipping privileged ports 80\+ configuration for Podman containers"
 fi
 msg_info "Installing SSH"
   virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh -y" >/dev/null &&
