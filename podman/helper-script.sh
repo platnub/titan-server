@@ -27,20 +27,38 @@ create_container() {
     ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
     
     # Optional .env
-    echo -e "PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"" > "$base_dir/$container_name/.env"
-    ${EDITOR:-nano} "$base_dir/$container_name/.env"
+ #   echo -e "PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"" > "$base_dir/$container_name/.env"
+ #   ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
     # Apply user permissions
-    chmod 775 "$base_dir/$container_name"
-    chmod 775 "$base_dir/$container_name/appdata"
-    chmod 775 "$base_dir/$container_name/logs"
-    chmod 600 "$base_dir/$container_name/secrets"
-    chmod 600 "$base_dir/$container_name/.env"
-    chown -R "$container_name" "$base_dir/$container_name"
-    podman unshare chown -R root:1000 "$base_dir/$container_name"
+ #   chmod 775 "$base_dir/$container_name"
+ #   chmod 775 "$base_dir/$container_name/appdata"
+ #   chmod 775 "$base_dir/$container_name/logs"
+ #   chmod 600 "$base_dir/$container_name/secrets"
+ #   chmod 600 "$base_dir/$container_name/.env"
+ #   chown -R "$container_name" "$base_dir/$container_name"
+ #   podman unshare chown -R root:1000 "$base_dir/$container_name"
     
-
     echo "Container $container_name created successfully with user."
+
+    # Ask to run the container
+    read -p "Do you want to run the container now? (y/n): " run_now
+    if [[ "$run_now" =~ ^[Yy]$ ]]; then
+        run_container "$container_name"
+    fi
+}
+# Function to run a container
+run_container() {
+    local container_name=$1
+    podman compose --file "$base_dir/$container_name/compose.yaml" up --detach
+    echo "Container $container_name started successfully."
+}
+
+# Function to stop a container
+stop_container() {
+    read -p "Enter the container name to stop: " container_name
+    podman compose --file "$base_dir/$container_name/compose.yaml" down
+    echo "Container $container_name stopped successfully."
 }
 
 # Function to list all containers
@@ -54,7 +72,7 @@ remove_container() {
     read -p "Enter the container name to remove: " container_name
     podman stop "$container_name"
     podman rm "$container_name"
-    rm -rf "/home/podman/containers/$container_name"
+    rm -rf "$base_dir/$container_name"
     echo "Container $container_name removed successfully."
 }
 
@@ -64,8 +82,10 @@ while true; do
     echo "1. Create a new container"
     echo "2. List all containers"
     echo "3. Remove a container"
-    echo "4. Exit"
-    read -p "Enter your choice (1-4): " choice
+    echo "4. Run a container"
+    echo "5. Stop a container"
+    echo "6. Exit"
+    read -p "Enter your choice (1-6): " choice
 
     case $choice in
         1)
@@ -78,11 +98,18 @@ while true; do
             remove_container
             ;;
         4)
+            read -p "Enter the container name to run: " container_name
+            run_container "$container_name"
+            ;;
+        5)
+            stop_container
+            ;;
+        6)
             echo "Exiting..."
             exit 0
             ;;
         *)
-            echo "Invalid choice. Please enter a number between 1 and 4."
+            echo "Invalid choice. Please enter a number between 1 and 6."
             ;;
     esac
 done
