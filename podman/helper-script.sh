@@ -1,33 +1,36 @@
 #!/bin/bash
+base_dir="/home/podman/containers"
 
 # Function to create a new container
 create_container() {
     read -p "Enter the container name: " container_name
-    read -p "Enter the username for the container: " username
-    read -p "Enter the user ID for the container: " user_id
+    read -p "Enter the user ID (UID) to use: " user_id
 
-    # Create container directory
-    mkdir -p "/home/podman/containers/$container_name"
-
-    # Set recursive permissions
-    sudo setfacl -Rdm o::--- "/home/podman/containers/$container_name"
-
-    # Create user inside the container
-    podman run --rm -it -v "/home/podman/containers/$container_name:/data" alpine sh -c "adduser -D -u $user_id $username && chown -R $username:$username /data"
-
-    # Set ownership of the folder
-    sudo chown -R "$username:$username" "/home/podman/containers/$container_name"
-
-    # Create compose.yaml file
-    nano "/home/podman/containers/$container_name/compose.yaml"
-
-    # Ask if user wants to create a .env file
-    read -p "Do you want to create a .env file? (y/n): " create_env
-    if [ "$create_env" = "y" ]; then
-        nano "/home/podman/containers/$container_name/.env"
+    # Create a non-login system user with the given UID
+    # -r system user, -U create group, -M no home, -s nologin shell
+    if ! id -u "$username" >/dev/null 2>&1; then
+      sudo useradd -r -U -u "$user_id" -M -s /usr/sbin/nologin -d "$base_dir/$container_name" "$username"
+    else
+      echo "User $username already exists; skipping creation."
     fi
 
-    echo "Container $container_name created successfully with user $username."
+    # Lock password to prevent password-based login
+    sudo passwd -l "$username"
+
+    # Create container directory and set ownership
+    sudo mkdir -p "$base_dir/$container_name"
+    sudo chown -R "$username:$username" "$base_dir/$container_name"
+    
+    # Create compose.yaml
+    ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
+    
+    # Optional .env
+    read -p "Create a .env file? (y/n): " create_env
+    if [ "$create_env" = "y" ]; then
+      ${EDITOR:-nano} "$base_dir/$container_name/.env"
+    fi
+
+    echo "Container $container_name created successfully with user."
 }
 
 # Function to list all containers
