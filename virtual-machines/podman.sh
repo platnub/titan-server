@@ -539,6 +539,9 @@ msg_info "Installing, configuring and restarting SSH"
   virt-customize -q -a "${FILE}" --run-command "sudo sed -i 's/\#Port 22/Port ${SSH_PORT}/' /etc/ssh/sshd_config" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo systemctl restart sshd" >/dev/null
 msg_ok "SSH installed"
+msg_info "Installing ACL"
+  virt-customize -q -a "${FILE}" --run-command "sudo apt install acl -y" >/dev/null
+msg_ok "ACL installed"
 # Enables large file caching for file servers.
 if [ "$ENABLE_CACHING" = "yes" ]; then
   msg_info "Enabling better caching for file servers."
