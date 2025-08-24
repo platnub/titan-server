@@ -533,17 +533,15 @@ create_container() {
 reapply_permissions() {
     local container_name=$1
     local result=0
-
     display_header
     info_msg "Applying permissions for container: $container_name"
-
     # Check if container directory exists
     if ! container_dir_exists "$container_name"; then
         error_msg "Container directory $base_dir/$container_name does not exist."
         return 1
     fi
 
-    # Set directory permissions
+    # Set directory permissions for the container directory and its immediate subdirectories
     if sudo chmod 700 "$base_dir/$container_name"; then
         success_msg "Set permissions for base directory"
     else
@@ -551,6 +549,7 @@ reapply_permissions() {
         result=1
     fi
 
+    # Only change permissions for appdata directory and its contents
     if sudo chmod 700 "$base_dir/$container_name/appdata"; then
         success_msg "Set permissions for appdata directory"
     else
@@ -558,6 +557,33 @@ reapply_permissions() {
         result=1
     fi
 
+    # Change ownership of the entire container directory to podman
+    if sudo chown -R podman:podman "$base_dir/$container_name"; then
+        success_msg "Changed ownership to podman user"
+    else
+        error_msg "Failed to change ownership to podman user"
+        result=1
+    fi
+
+    # Load rootless_user if it exists
+    if [ -f "$base_dir/$container_name/.env" ]; then
+        if load_rootless_user "$container_name"; then
+            if [ -n "$rootless_user" ]; then
+                # Use podman unshare to change ownership inside the container's user namespace
+                # Only apply to the appdata directory and its contents
+                if podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"; then
+                    success_msg "Applied permissions for user $rootless_user to appdata contents"
+                else
+                    error_msg "Failed to apply permissions for user $rootless_user to appdata contents"
+                    result=1
+                fi
+            fi
+        else
+            result=1
+        fi
+    fi
+
+    # Set specific permissions for other directories (but not beyond appdata)
     if sudo chmod 700 "$base_dir/$container_name/logs"; then
         success_msg "Set permissions for logs directory"
     else
@@ -596,37 +622,11 @@ reapply_permissions() {
         warning_msg ".env not found, skipping permission setting"
     fi
 
-    # Change ownership to podman user
-    if sudo chown -R podman:podman "$base_dir/$container_name"; then
-        success_msg "Changed ownership to podman user"
-    else
-        error_msg "Failed to change ownership to podman user"
-        result=1
-    fi
-
-    # Load rootless_user if it exists
-    if [ -f "$base_dir/$container_name/.env" ]; then
-        if load_rootless_user "$container_name"; then
-            if [ -n "$rootless_user" ]; then
-                # Use podman unshare to change ownership inside the container's user namespace
-                if podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"; then
-                    success_msg "Applied permissions for user $rootless_user"
-                else
-                    error_msg "Failed to apply permissions for user $rootless_user"
-                    result=1
-                fi
-            fi
-        else
-            result=1
-        fi
-    fi
-
     if [ $result -eq 0 ]; then
         success_msg "Permissions applied successfully."
     else
         error_msg "Permission application completed with errors."
     fi
-
     return $result
 }
 
