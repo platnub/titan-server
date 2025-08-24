@@ -12,6 +12,21 @@ start_container() {
     local container_name=$1
     reapply_permissions "$container_name"
     podman start $container_name
+
+    # Wait for the container to be fully running
+    echo "Waiting for container $container_name to be fully running..."
+    while true; do
+        container_status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
+        if [ "$container_status" = "running" ]; then
+            # Additional check to ensure the container is ready
+            # You might need to adjust this based on your specific container
+            if podman exec "$container_name" test -e /proc/1; then
+                break
+            fi
+        fi
+        sleep 1
+    done
+
     update_rootless_user "$container_name"
     echo "Container $container_name started successfully."
 }
