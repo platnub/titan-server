@@ -4,18 +4,18 @@ base_dir="/home/podman/containers"
 # Function to create a new container
 create_container() {
     read -p "Enter the container name: " container_name
-    read -p "Enter the user ID (UID) to use: " user_id
+#    read -p "Enter the user ID (UID) to use: " user_id
 
     # Create a non-login system user with the given UID
     # -r system user, -U create group, -M no home, -s nologin shell
-    if ! id -u "$container_name" >/dev/null 2>&1; then
-      useradd -r -U -u "$user_id" -M -s /usr/sbin/nologin -d "$base_dir/$container_name" "$container_name"
-    else
-      echo "User $container_name already exists; skipping creation."
-    fi
+#    if ! id -u "$container_name" >/dev/null 2>&1; then
+#      useradd -r -U -u "$user_id" -M -s /usr/sbin/nologin -d "$base_dir/$container_name" "$container_name"
+#    else
+#      echo "User $container_name already exists; skipping creation."
+#    fi
 
     # Lock password to prevent password-based login
-    passwd -l "$container_name"
+#    passwd -l "$container_name"
 
     # Create container directories
     mkdir -p "$base_dir/$container_name"
@@ -27,12 +27,17 @@ create_container() {
     ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
     
     # Optional .env
-    echo -e "PUID=$user_id\nPGID=$user_id\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"" > "$base_dir/$container_name/.env"
+    echo -e "PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"" > "$base_dir/$container_name/.env"
     ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
     # Apply user permissions
-    chmod 600 "$base_dir/$container_name"
+    chmod 775 "$base_dir/$container_name"
+    chmod 775 "$base_dir/$container_name/appdata"
+    chmod 775 "$base_dir/$container_name/logs"
+    chmod 600 "$base_dir/$container_name/secrets"
+    chmod 600 "$base_dir/$container_name/.env"
     chown -R "$container_name" "$base_dir/$container_name"
+    podman unshare chown -R root:1000 "$base_dir/$container_name"
     
 
     echo "Container $container_name created successfully with user."
