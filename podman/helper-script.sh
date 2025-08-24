@@ -10,6 +10,7 @@ list_containers() {
 # Function to run a container
 run_container() {
     local container_name=$1
+    reapply_permissions
     podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
     update_rootless_user "$container_name"
     echo "Container $container_name started successfully."
@@ -167,10 +168,9 @@ while true; do
     echo "2. Run a container"
     echo "3. Stop a container"
     echo "4. Create a new container"
-    echo "5. Reapply permissions"
     echo "99. Remove a container"
-    echo "6. Exit"
-    read -p "Enter your choice (1-6): " choice
+    echo "5. Exit"
+    read -p "Enter your choice (1-5): " choice
 
     case $choice in
         1)
@@ -189,10 +189,6 @@ while true; do
             create_container "$container_name"
             ;;
         5)
-            read -p "Enter the container name to reapply permissions: " container_name
-            reapply_permissions "$container_name"
-            ;;
-        6)
             echo "Exiting..."
             exit 0
             ;;
