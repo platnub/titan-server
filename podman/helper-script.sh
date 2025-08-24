@@ -286,8 +286,9 @@ reapply_permissions() {
         load_rootless_user "$container_name"
         if [ -n "$rootless_user" ]; then
             # Use podman unshare to change ownership inside the container's user namespace
-            # Only apply to files inside appdata directory (not the directory itself)
+            # Only apply to contents of appdata directory
             if [ -d "$container_dir/appdata" ]; then
+                # Find all files and directories inside appdata and apply ownership
                 find "$container_dir/appdata" -mindepth 1 -exec podman unshare chown "$rootless_user:$rootless_user" {} \;
             fi
         fi
