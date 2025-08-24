@@ -27,8 +27,8 @@ create_container() {
     ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
     
     # Optional .env
- #   echo -e "PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"" > "$base_dir/$container_name/.env"
- #   ${EDITOR:-nano} "$base_dir/$container_name/.env"
+    echo -e "PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"" > "$base_dir/$container_name/.env"
+    ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
     # Apply user permissions
  #   chmod 775 "$base_dir/$container_name"
