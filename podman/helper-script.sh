@@ -60,7 +60,6 @@ list_containers() {
     echo
     podman ps -a --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}\t{{.Image}}"
     echo
-    read -p "Press Enter to continue..."
 }
 
 # Function to wait for container to be fully running
@@ -112,6 +111,7 @@ wait_for_container_running() {
 # Function to run a container
 start_container() {
     local container_name=$1
+    local result=0
 
     display_header
     info_msg "Starting container: $container_name"
@@ -119,7 +119,6 @@ start_container() {
     # Check if container exists
     if ! podman inspect "$container_name" &>/dev/null; then
         error_msg "Container $container_name does not exist."
-        read -p "Press Enter to continue..."
         return 1
     fi
 
@@ -132,6 +131,7 @@ start_container() {
     # Wait for the container to be fully running
     if ! wait_for_container_running "$container_name"; then
         error_msg "Container $container_name did not start properly."
+        result=1
 
         if confirm "Would you like to view the logs?"; then
             podman logs "$container_name" 2>&1
@@ -144,23 +144,23 @@ start_container() {
             # Wait again
             if ! wait_for_container_running "$container_name"; then
                 error_msg "Container $container_name failed to start after restart."
-                read -p "Press Enter to continue..."
-                return 1
+                result=1
+            else
+                result=0
             fi
-        else
-            read -p "Press Enter to continue..."
-            return 1
         fi
+    else
+        update_rootless_user "$container_name"
+        success_msg "Container $container_name started successfully."
     fi
 
-    update_rootless_user "$container_name"
-    success_msg "Container $container_name started successfully."
-    read -p "Press Enter to continue..."
+    return $result
 }
 
 # Function to stop a container
 stop_container() {
     local container_name=$1
+    local result=0
 
     display_header
     info_msg "Stopping container: $container_name"
@@ -168,7 +168,6 @@ stop_container() {
     # Check if container exists
     if ! podman inspect "$container_name" &>/dev/null; then
         error_msg "Container $container_name does not exist."
-        read -p "Press Enter to continue..."
         return 1
     fi
 
@@ -177,15 +176,21 @@ stop_container() {
         update_rootless_user "$container_name"
     fi
 
-    podman stop "$container_name"
-    success_msg "Container $container_name stopped successfully."
-    read -p "Press Enter to continue..."
+    if podman stop "$container_name"; then
+        success_msg "Container $container_name stopped successfully."
+    else
+        error_msg "Failed to stop container $container_name."
+        result=1
+    fi
+
+    return $result
 }
 
 # Function to create new folders in appdata
 create_appdata_folders() {
     local container_name=$1
     local appdata_dir="$base_dir/$container_name/appdata"
+    local result=0
 
     info_msg "Checking for new folders to create in $appdata_dir..."
 
@@ -209,13 +214,17 @@ create_appdata_folders() {
             fi
         else
             error_msg "Failed to create folder $appdata_dir/$folder_name"
+            result=1
         fi
     done
+
+    return $result
 }
 
 # Function to decompose a container (stop and remove containers)
 decompose_container() {
     local container_name=$1
+    local result=0
 
     display_header
     info_msg "Decomposing container: $container_name"
@@ -223,7 +232,6 @@ decompose_container() {
     # Check if container exists
     if ! podman inspect "$container_name" &>/dev/null; then
         error_msg "Container $container_name does not exist."
-        read -p "Press Enter to continue..."
         return 1
     fi
 
@@ -231,14 +239,16 @@ decompose_container() {
         success_msg "Container $container_name decomposed successfully."
     else
         error_msg "Failed to decompose container $container_name."
+        result=1
     fi
 
-    read -p "Press Enter to continue..."
+    return $result
 }
 
 # Function to compose a container (start containers)
 compose_container() {
     local container_name=$1
+    local result=0
 
     display_header
     info_msg "Composing container: $container_name"
@@ -246,7 +256,6 @@ compose_container() {
     # Check if container exists
     if ! podman inspect "$container_name" &>/dev/null; then
         error_msg "Container $container_name does not exist."
-        read -p "Press Enter to continue..."
         return 1
     fi
 
@@ -257,14 +266,16 @@ compose_container() {
         success_msg "Container $container_name composed successfully."
     else
         error_msg "Failed to compose container $container_name."
+        result=1
     fi
 
-    read -p "Press Enter to continue..."
+    return $result
 }
 
 # Function to recompose a container (decompose and then compose)
 recompose_container() {
     local container_name=$1
+    local result=0
 
     display_header
     info_msg "Recomposing container: $container_name"
@@ -272,17 +283,24 @@ recompose_container() {
     # Check if container exists
     if ! podman inspect "$container_name" &>/dev/null; then
         error_msg "Container $container_name does not exist."
-        read -p "Press Enter to continue..."
         return 1
     fi
 
-    decompose_container "$container_name"
-    compose_container "$container_name"
+    if ! decompose_container "$container_name"; then
+        result=1
+    fi
+
+    if ! compose_container "$container_name"; then
+        result=1
+    fi
+
+    return $result
 }
 
 # Function to create a new container
 create_container() {
     local container_name=$1
+    local result=0
 
     display_header
     info_msg "Creating new container: $container_name"
@@ -290,7 +308,6 @@ create_container() {
     # Check if container already exists
     if podman inspect "$container_name" &>/dev/null; then
         error_msg "Container $container_name already exists."
-        read -p "Press Enter to continue..."
         return 1
     fi
 
@@ -299,7 +316,6 @@ create_container() {
         success_msg "Created base directory: $base_dir/$container_name"
     else
         error_msg "Failed to create base directory."
-        read -p "Press Enter to continue..."
         return 1
     fi
 
@@ -307,24 +323,21 @@ create_container() {
         success_msg "Created appdata directory"
     else
         error_msg "Failed to create appdata directory."
-        read -p "Press Enter to continue..."
-        return 1
+        result=1
     fi
 
     if sudo mkdir -p "$base_dir/$container_name/logs"; then
         success_msg "Created logs directory"
     else
         error_msg "Failed to create logs directory."
-        read -p "Press Enter to continue..."
-        return 1
+        result=1
     fi
 
     if sudo mkdir -p "$base_dir/$container_name/secrets"; then
         success_msg "Created secrets directory"
     else
         error_msg "Failed to create secrets directory."
-        read -p "Press Enter to continue..."
-        return 1
+        result=1
     fi
 
     # Create compose.yaml
@@ -338,23 +351,33 @@ create_container() {
 
     # Ask to create new folders in appdata
     if confirm "Do you want to create any new folders in the appdata directory?"; then
-        create_appdata_folders "$container_name"
+        if ! create_appdata_folders "$container_name"; then
+            result=1
+        fi
     fi
 
     reapply_permissions "$container_name"
-    success_msg "Container $container_name created successfully."
 
-    # Ask to run the container
-    if confirm "Do you want to compose the container now?"; then
-        compose_container "$container_name"
+    if [ $result -eq 0 ]; then
+        success_msg "Container $container_name created successfully."
+
+        # Ask to run the container
+        if confirm "Do you want to compose the container now?"; then
+            if ! compose_container "$container_name"; then
+                result=1
+            fi
+        fi
     else
-        read -p "Press Enter to continue..."
+        error_msg "Container creation completed with errors."
     fi
+
+    return $result
 }
 
 # Apply user permissions
 reapply_permissions() {
     local container_name=$1
+    local result=0
 
     display_header
     info_msg "Applying permissions for container: $container_name"
@@ -362,39 +385,91 @@ reapply_permissions() {
     # Check if container exists
     if ! podman inspect "$container_name" &>/dev/null; then
         error_msg "Container $container_name does not exist."
-        read -p "Press Enter to continue..."
         return 1
     fi
 
     # Set directory permissions
-    sudo chmod 700 "$base_dir/$container_name"
-    sudo chmod 700 "$base_dir/$container_name/appdata"
-    sudo chmod 700 "$base_dir/$container_name/logs"
-    sudo chmod 400 "$base_dir/$container_name/secrets"
-    sudo chmod 400 "$base_dir/$container_name/compose.yaml"
-    sudo chmod 400 "$base_dir/$container_name/.env"
+    if sudo chmod 700 "$base_dir/$container_name"; then
+        success_msg "Set permissions for base directory"
+    else
+        error_msg "Failed to set permissions for base directory"
+        result=1
+    fi
+
+    if sudo chmod 700 "$base_dir/$container_name/appdata"; then
+        success_msg "Set permissions for appdata directory"
+    else
+        error_msg "Failed to set permissions for appdata directory"
+        result=1
+    fi
+
+    if sudo chmod 700 "$base_dir/$container_name/logs"; then
+        success_msg "Set permissions for logs directory"
+    else
+        error_msg "Failed to set permissions for logs directory"
+        result=1
+    fi
+
+    if sudo chmod 400 "$base_dir/$container_name/secrets"; then
+        success_msg "Set permissions for secrets directory"
+    else
+        error_msg "Failed to set permissions for secrets directory"
+        result=1
+    fi
+
+    if sudo chmod 400 "$base_dir/$container_name/compose.yaml"; then
+        success_msg "Set permissions for compose.yaml"
+    else
+        error_msg "Failed to set permissions for compose.yaml"
+        result=1
+    fi
+
+    if sudo chmod 400 "$base_dir/$container_name/.env"; then
+        success_msg "Set permissions for .env file"
+    else
+        error_msg "Failed to set permissions for .env file"
+        result=1
+    fi
 
     # Change ownership to podman user
-    sudo chown -R podman:podman "$base_dir/$container_name"
+    if sudo chown -R podman:podman "$base_dir/$container_name"; then
+        success_msg "Changed ownership to podman user"
+    else
+        error_msg "Failed to change ownership to podman user"
+        result=1
+    fi
 
     # Load rootless_user if it exists
     if [ -f "$base_dir/$container_name/.env" ]; then
-        load_rootless_user "$container_name"
-        if [ -n "$rootless_user" ]; then
-            # Use podman unshare to change ownership inside the container's user namespace
-            podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"
-            success_msg "Applied permissions for user $rootless_user"
+        if load_rootless_user "$container_name"; then
+            if [ -n "$rootless_user" ]; then
+                # Use podman unshare to change ownership inside the container's user namespace
+                if podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"; then
+                    success_msg "Applied permissions for user $rootless_user"
+                else
+                    error_msg "Failed to apply permissions for user $rootless_user"
+                    result=1
+                fi
+            fi
+        else
+            result=1
         fi
     fi
 
-    success_msg "Permissions applied successfully."
-    read -p "Press Enter to continue..."
+    if [ $result -eq 0 ]; then
+        success_msg "Permissions applied successfully."
+    else
+        error_msg "Permission application completed with errors."
+    fi
+
+    return $result
 }
 
 # Load rootless_user from .env
 load_rootless_user() {
     local container_name=$1
     local env_file="$base_dir/$container_name/.env"
+    local result=0
 
     if [[ ! -r "$env_file" ]]; then
         error_msg "Cannot read $env_file"
@@ -422,12 +497,15 @@ load_rootless_user() {
     rootless_user="$val"
     export rootless_user
     success_msg "Loaded rootless_user: $rootless_user"
+
+    return $result
 }
 
 # Function to update rootless_user in .env
 update_rootless_user() {
     local container_name=$1
     local env_file="$base_dir/$container_name/.env"
+    local result=0
 
     # Get HUSER for user "abc"
     local podman_huser
@@ -446,12 +524,20 @@ update_rootless_user() {
 
         if grep -qE '^[[:space:]]*rootless_user=' "$env_file"; then
             # Update existing key
-            sudo sed -i -E "s|^[[:space:]]*rootless_user=.*|rootless_user=$podman_huser|" "$env_file"
-            success_msg "Updated rootless_user in .env"
+            if sudo sed -i -E "s|^[[:space:]]*rootless_user=.*|rootless_user=$podman_huser|" "$env_file"; then
+                success_msg "Updated rootless_user in .env"
+            else
+                error_msg "Failed to update rootless_user in .env"
+                result=1
+            fi
         else
             # Append the key
-            sudo sh -c "printf '\nrootless_user=%s\n' '$podman_huser' >> '$env_file'"
-            success_msg "Added rootless_user to .env"
+            if sudo sh -c "printf '\nrootless_user=%s\n' '$podman_huser' >> '$env_file'"; then
+                success_msg "Added rootless_user to .env"
+            else
+                error_msg "Failed to add rootless_user to .env"
+                result=1
+            fi
         fi
 
         # Restore original permissions if we changed them
@@ -460,14 +546,21 @@ update_rootless_user() {
         fi
     else
         # Create new file with the key
-        sudo sh -c "printf 'rootless_user=%s\n' '$podman_huser' > '$env_file'"
-        success_msg "Created .env with rootless_user"
+        if sudo sh -c "printf 'rootless_user=%s\n' '$podman_huser' > '$env_file'"; then
+            success_msg "Created .env with rootless_user"
+        else
+            error_msg "Failed to create .env with rootless_user"
+            result=1
+        fi
     fi
+
+    return $result
 }
 
 # Function to remove a container
 remove_container() {
     local container_name=$1
+    local result=0
 
     display_header
     info_msg "Removing container: $container_name"
@@ -475,22 +568,26 @@ remove_container() {
     # Check if container exists
     if ! podman inspect "$container_name" &>/dev/null; then
         error_msg "Container $container_name does not exist."
-        read -p "Press Enter to continue..."
         return 1
     fi
 
     # Stop the container first
-    stop_container "$container_name"
+    if ! stop_container "$container_name"; then
+        result=1
+    fi
 
     # Remove the container
     if podman rm "$container_name"; then
         success_msg "Container $container_name removed."
     else
         error_msg "Failed to remove container $container_name."
+        result=1
     fi
 
     # Decompose the container
-    decompose_container "$container_name"
+    if ! decompose_container "$container_name"; then
+        result=1
+    fi
 
     # Ask to remove ALL container data
     if confirm "Do you want to remove ALL container data from $container_name?"; then
@@ -499,12 +596,18 @@ remove_container() {
                 success_msg "ALL container data removed from $container_name."
             else
                 error_msg "Failed to remove container data."
+                result=1
             fi
         fi
     fi
 
-    success_msg "Container $container_name removed successfully."
-    read -p "Press Enter to continue..."
+    if [ $result -eq 0 ]; then
+        success_msg "Container $container_name removed successfully."
+    else
+        error_msg "Container removal completed with errors."
+    fi
+
+    return $result
 }
 
 # Main menu
@@ -527,30 +630,37 @@ while true; do
     case $choice in
         1)
             list_containers
+            read -p "Press Enter to continue..."
             ;;
         2)
             read -p "Enter the container name to start: " container_name
             start_container "$container_name"
+            read -p "Press Enter to continue..."
             ;;
         3)
             read -p "Enter the container name to stop: " container_name
             stop_container "$container_name"
+            read -p "Press Enter to continue..."
             ;;
         4)
             read -p "Enter the new container name: " container_name
             create_container "$container_name"
+            read -p "Press Enter to continue..."
             ;;
         5)
             read -p "Enter the container name to compose: " container_name
             compose_container "$container_name"
+            read -p "Press Enter to continue..."
             ;;
         6)
             read -p "Enter the container name to recompose: " container_name
             recompose_container "$container_name"
+            read -p "Press Enter to continue..."
             ;;
         7)
             read -p "Enter the container name to apply permissions: " container_name
             reapply_permissions "$container_name"
+            read -p "Press Enter to continue..."
             ;;
         8)
             read -p "Enter the container name to update rootless user: " container_name
@@ -560,6 +670,7 @@ while true; do
         99)
             read -p "Enter the container name to remove: " container_name
             remove_container "$container_name"
+            read -p "Press Enter to continue..."
             ;;
         0)
             echo -e "${GREEN}Exiting...${NC}"
