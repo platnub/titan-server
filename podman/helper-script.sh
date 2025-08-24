@@ -37,7 +37,7 @@ create_container() {
     sudo chmod 400 "$base_dir/$container_name/secrets"
     sudo chmod 400 "$base_dir/$container_name/compose.yaml"
     sudo chmod 400 "$base_dir/$container_name/.env"
-    chown -R podman:podman "$base_dir/$container_name"
+    sudo chown -R podman:podman "$base_dir/$container_name"
     podman unshare chown -R 1000:1000 "$base_dir/$container_name"
     
     echo "Container $container_name created successfully with user."
