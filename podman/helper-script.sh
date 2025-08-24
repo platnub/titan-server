@@ -535,22 +535,10 @@ reapply_permissions() {
     local result=0
     display_header
     info_msg "Applying permissions for container: $container_name"
-
     # Check if container directory exists
     if ! container_dir_exists "$container_name"; then
         error_msg "Container directory $base_dir/$container_name does not exist."
         return 1
-    fi
-
-    # Load rootless_user if it exists
-    if [ -f "$base_dir/$container_name/.env" ]; then
-        if ! load_rootless_user "$container_name"; then
-            warning_msg "Could not load rootless_user from .env, proceeding without it"
-            rootless_user=""
-        fi
-    else
-        warning_msg ".env file not found, proceeding without rootless_user"
-        rootless_user=""
     fi
 
     # Set directory permissions for the container directory and its immediate subdirectories
@@ -561,15 +549,41 @@ reapply_permissions() {
         result=1
     fi
 
-    # Set permissions for appdata directory
-    if sudo chmod 700 "$base_dir/$container_name/appdata"; then
-        success_msg "Set permissions for appdata directory"
+    # Change ownership of the entire container directory to podman
+    if sudo chown -R podman:podman "$base_dir/$container_name"; then
+        success_msg "Changed ownership to podman user"
     else
-        error_msg "Failed to set permissions for appdata directory"
+        error_msg "Failed to change ownership to podman user"
         result=1
     fi
 
-    # Set permissions for logs directory (rwx)
+    # Load rootless_user if it exists
+    if [ -f "$base_dir/$container_name/.env" ]; then
+        if load_rootless_user "$container_name"; then
+            if [ -n "$rootless_user" ]; then
+                # Apply permissions to appdata directory itself (not contents)
+                if sudo chmod 700 "$base_dir/$container_name/appdata"; then
+                    success_msg "Set permissions for appdata directory"
+                else
+                    error_msg "Failed to set permissions for appdata directory"
+                    result=1
+                fi
+
+                # Use podman unshare to change ownership inside the container's user namespace
+                # Only apply to the appdata directory and its contents
+                if podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"; then
+                    success_msg "Applied permissions for user $rootless_user to appdata contents"
+                else
+                    error_msg "Failed to apply permissions for user $rootless_user to appdata contents"
+                    result=1
+                fi
+            fi
+        else
+            result=1
+        fi
+    fi
+
+    # Set specific permissions for other directories (but not beyond appdata)
     if sudo chmod 700 "$base_dir/$container_name/logs"; then
         success_msg "Set permissions for logs directory"
     else
@@ -577,15 +591,15 @@ reapply_permissions() {
         result=1
     fi
 
-    # Set permissions for secrets directory (read only)
-    if sudo chmod 700 "$base_dir/$container_name/secrets"; then
+    # Set permissions for secrets directory
+    if sudo chmod 400 "$base_dir/$container_name/secrets"; then
         success_msg "Set permissions for secrets directory"
     else
         error_msg "Failed to set permissions for secrets directory"
         result=1
     fi
 
-    # Set permissions for compose.yaml (read only)
+    # Check if compose.yaml exists before setting permissions
     if [ -f "$base_dir/$container_name/compose.yaml" ]; then
         if sudo chmod 400 "$base_dir/$container_name/compose.yaml"; then
             success_msg "Set permissions for compose.yaml"
@@ -597,7 +611,7 @@ reapply_permissions() {
         warning_msg "compose.yaml not found, skipping permission setting"
     fi
 
-    # Set permissions for .env (read only)
+    # Check if .env exists before setting permissions
     if [ -f "$base_dir/$container_name/.env" ]; then
         if sudo chmod 400 "$base_dir/$container_name/.env"; then
             success_msg "Set permissions for .env file"
@@ -607,63 +621,6 @@ reapply_permissions() {
         fi
     else
         warning_msg ".env not found, skipping permission setting"
-    fi
-
-    # Change ownership of the entire container directory to the current user
-    if sudo chown -R "$(whoami):$(whoami)" "$base_dir/$container_name"; then
-        success_msg "Changed ownership to current user"
-    else
-        error_msg "Failed to change ownership to current user"
-        result=1
-    fi
-
-    # Apply podman unshare chown treatment for specific files if rootless_user is set
-    if [ -n "$rootless_user" ]; then
-        # Apply to appdata directory contents
-        if podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"; then
-            success_msg "Applied permissions for user $rootless_user to appdata contents"
-        else
-            error_msg "Failed to apply permissions for user $rootless_user to appdata contents"
-            result=1
-        fi
-
-        # Apply to logs directory
-        if podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/logs/"; then
-            success_msg "Applied permissions for user $rootless_user to logs directory"
-        else
-            error_msg "Failed to apply permissions for user $rootless_user to logs directory"
-            result=1
-        fi
-
-        # Apply to secrets directory
-        if podman unshare chmod -R 400 "$base_dir/$container_name/secrets/"; then
-            success_msg "Applied read-only permissions to secrets directory"
-        else
-            error_msg "Failed to apply read-only permissions to secrets directory"
-            result=1
-        fi
-
-        # Apply to compose.yaml
-        if [ -f "$base_dir/$container_name/compose.yaml" ]; then
-            if podman unshare chown "$rootless_user:$rootless_user" "$base_dir/$container_name/compose.yaml"; then
-                success_msg "Applied permissions for user $rootless_user to compose.yaml"
-            else
-                error_msg "Failed to apply permissions for user $rootless_user to compose.yaml"
-                result=1
-            fi
-        fi
-
-        # Apply to .env
-        if [ -f "$base_dir/$container_name/.env" ]; then
-            if podman unshare chown "$rootless_user:$rootless_user" "$base_dir/$container_name/.env"; then
-                success_msg "Applied permissions for user $rootless_user to .env"
-            else
-                error_msg "Failed to apply permissions for user $rootless_user to .env"
-                result=1
-            fi
-        fi
-    else
-        warning_msg "rootless_user not set, skipping podman unshare chown treatment"
     fi
 
     if [ $result -eq 0 ]; then
