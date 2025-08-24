@@ -507,8 +507,7 @@ msg_info "Creating Podman user and locking root user"
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo usermod -aG sudo podman" >/dev/null &&
-  virt-customize -q -a "${FILE}" --password podman:password:${SUDO_PASSWORD}
-#  virt-customize -q -a "${FILE}" --run-command "echo 'podman:${SUDO_PASSWORD}' | sudo chpasswd" >/dev/null &&
+  virt-customize -q -a "${FILE}" --password podman:password:${SUDO_PASSWORD} >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo passwd -l root" >/dev/null &&
 msg_ok "Podman user created and root user locked"
 msg_info "Installing & configuring Podman & Installing podman-compose"
@@ -516,10 +515,11 @@ msg_info "Installing & configuring Podman & Installing podman-compose"
   virt-customize -q -a "${FILE}" --run-command "systemctl enable podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "apt-get install -y podman-compose" >/dev/null &&
 # Makes Podman containers run rootless
-  virt-customize -q -a "${FILE}" --run-command "mkdir -p /home/podman/containers" >/dev/null &&
+  virt-customize -q -a "${FILE}" --mkdir "/home/podman/containers" >/dev/null &&
+#  virt-customize -q -a "${FILE}" --run-command "mkdir -p /home/podman/containers" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo 'rootless = true' > /home/podman/containers/containers.conf" >/dev/null &&
 # Add docker.io as a registry
-  virt-customize -q -a "${FILE}" --run-command "mkdir --parents /home/podman/.config/containers" >/dev/null &&
+  virt-customize -q -a "${FILE}" --mkdir "/home/podman/.config/containers" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
   virt-customize -q -a "${FILE}" --firstboot-command "sudo loginctl enable-linger podman" >/dev/null
