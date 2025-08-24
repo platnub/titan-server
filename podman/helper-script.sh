@@ -6,6 +6,36 @@ list_containers() {
     echo "Listing all Podman containers:"
     podman ps -a
 }
+# Function to wait for container to be fully running
+wait_for_container_running() {
+    local container_name=$1
+    local max_attempts=30
+    local attempt=0
+    local status
+
+    echo "Waiting for container $container_name to be fully running..."
+
+    while [ $attempt -lt $max_attempts ]; do
+        # Get container status
+        status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
+
+        if [ "$status" = "running" ]; then
+            # Check if the container is actually ready (optional: add more checks here)
+            # For example, you could check if a specific port is listening or a process is running
+            echo "Container $container_name is running."
+            return 0
+        elif [ "$status" = "exited" ] || [ "$status" = "dead" ]; then
+            echo "Container $container_name is in $status state."
+            return 1
+        fi
+
+        attempt=$((attempt + 1))
+        sleep 2
+    done
+
+    echo "Timeout waiting for container $container_name to start."
+    return 1
+}
 
 # Function to run a container
 start_container() {
@@ -19,6 +49,11 @@ start_container() {
     # Wait for the container to be fully running
     if ! wait_for_container_running "$container_name"; then
         echo "Error: Container $container_name did not start properly."
+
+        # Check container logs for errors
+        echo "Container logs:"
+        podman logs "$container_name" 2>&1
+
         return 1
     fi
 
