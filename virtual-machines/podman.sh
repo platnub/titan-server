@@ -101,7 +101,15 @@ function cleanup() {
 TEMP_DIR=$(mktemp -d)
 pushd $TEMP_DIR >/dev/null
 if whiptail --backtitle "Proxmox VE Helper Scripts" --title "Podman VM" --yesno "This will create a New Podman VM. Proceed?" 10 58; then
-  :
+  # Sudo password
+  if SUDO_PASSWORD=$(whiptail --backtitle "Proxmox VE Helper Scripts" --passwordbox "Enter sudo password for the Podman VM" 8 58 --title "SUDO PASSWORD" --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
+    if [ -z "$SUDO_PASSWORD" ]; then
+      msg_error "Sudo password cannot be empty."
+      exit-script
+    fi
+  else
+    exit-script
+  fi
 else
   header_info && echo -e "${CROSS}${RD}User exited script${CL}\n" && exit
 fi
@@ -423,17 +431,6 @@ function start_script() {
     advanced_settings
   fi
 }
-
-# Sudo 
-if SUDO_=$(whiptail --backtitle "Proxmox VE Helper Scripts" --box "Set Sudo " 8 58 --title "SUDO " --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
-  if [ -z $SUDO_ ]; then
-    msg_error "Sudo  cannot be empty."
-    exit-script
-  fi
-else
-  exit-script
-fi
-
 check_root
 arch_check
 pve_check
