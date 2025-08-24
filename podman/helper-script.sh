@@ -70,7 +70,7 @@ list_containers() {
 # Function to remove a container
 remove_container() {
     read -p "Enter the container name to remove: " container_name
-    podman stop "$container_name"
+    stop_container $container_name
     podman rm "$container_name"
     rm -rf "$base_dir/$container_name"
     echo "Container $container_name removed successfully."
