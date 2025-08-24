@@ -5,53 +5,71 @@ base_dir="/home/podman/containers"
 rootless_user=""
 current_container=""
 
-# Color definitions for better UI
+# Colors for better UI
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Function to display colored messages
-display_message() {
-    local color=$1
-    local message=$2
-    echo -e "${color}${message}${NC}"
+# Function to display header
+display_header() {
+    clear
+    echo -e "${BLUE}==============================================${NC}"
+    echo -e "${BLUE}        PODMAN CONTAINER MANAGEMENT          ${NC}"
+    echo -e "${BLUE}==============================================${NC}"
+    echo ""
 }
 
-# Function to display error messages
-display_error() {
-    display_message "${RED}" "[ERROR] $1"
-}
-
-# Function to display success messages
-display_success() {
-    display_message "${GREEN}" "[SUCCESS] $1"
-}
-
-# Function to display warning messages
-display_warning() {
-    display_message "${YELLOW}" "[WARNING] $1"
-}
-
-# Function to display info messages
-display_info() {
-    display_message "${BLUE}" "[INFO] $1"
+# Function to display menu
+display_menu() {
+    display_header
+    echo -e "${GREEN}1.${NC} List all containers"
+    echo -e "${GREEN}2.${NC} Start a container"
+    echo -e "${GREEN}3.${NC} Stop a container"
+    echo -e "${GREEN}4.${NC} Create a new container"
+    echo -e "${GREEN}5.${NC} Compose a container"
+    echo -e "${GREEN}6.${NC} Decompose a container"
+    echo -e "${GREEN}7.${NC} Edit container files"
+    echo -e "${GREEN}8.${NC} Remove a container"
+    echo -e "${GREEN}9.${NC} Exit"
+    echo ""
 }
 
 # Function to pause and wait for user input
-pause_for_input() {
-    read -p "Press [Enter] to continue..."
+pause() {
+    echo ""
+    read -n 1 -s -r -p "Press any key to continue..."
+    echo ""
+}
+
+# Function to display error message
+error_msg() {
+    echo -e "${RED}ERROR: $1${NC}"
+}
+
+# Function to display warning message
+warning_msg() {
+    echo -e "${YELLOW}WARNING: $1${NC}"
+}
+
+# Function to display success message
+success_msg() {
+    echo -e "${GREEN}SUCCESS: $1${NC}"
+}
+
+# Function to display info message
+info_msg() {
+    echo -e "${BLUE}INFO: $1${NC}"
 }
 
 # Function to list all containers
 list_containers() {
-    clear
-    display_info "Listing all Podman containers:"
+    display_header
+    echo -e "${BLUE}Listing all Podman containers:${NC}"
     echo "----------------------------------------"
-    podman ps -a --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}"
-    echo "----------------------------------------"
-    pause_for_input
+    podman ps -a --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Image}}"
+    pause
 }
 
 # Function to wait for container to be fully running
@@ -62,24 +80,24 @@ wait_for_container_running() {
     local status
     local health_status
 
-    display_info "Waiting for container $container_name to be fully running..."
+    info_msg "Waiting for container $container_name to be fully running..."
 
     while [ $attempt -lt $max_attempts ]; do
         status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
         if [ "$status" = "running" ]; then
             health_status=$(podman inspect -f '{{.State.Health.Status}}' "$container_name" 2>/dev/null)
             if [ -n "$health_status" ] && [ "$health_status" != "healthy" ]; then
-                display_warning "Container $container_name is running but health check is $health_status..."
+                info_msg "Container $container_name is running but health check is $health_status..."
             else
-                display_success "Container $container_name is running and healthy."
+                success_msg "Container $container_name is running and healthy."
                 return 0
             fi
         elif [ "$status" = "exited" ] || [ "$status" = "dead" ]; then
-            display_error "Container $container_name is in $status state."
+            error_msg "Container $container_name is in $status state."
             exit_code=$(podman inspect -f '{{.State.ExitCode}}' "$container_name" 2>/dev/null)
             if [ -n "$exit_code" ] && [ "$exit_code" -ne 0 ]; then
-                display_error "Container exited with code $exit_code"
-                display_info "Container logs:"
+                error_msg "Container exited with code $exit_code"
+                echo "Container logs:"
                 podman logs "$container_name" 2>&1
             fi
             return 1
@@ -88,67 +106,76 @@ wait_for_container_running() {
         sleep 2
     done
 
-    display_error "Timeout waiting for container $container_name to start."
-    display_info "Current status: $status"
-    display_info "Container logs:"
+    error_msg "Timeout waiting for container $container_name to start."
+    echo "Current status: $status"
+    echo "Container logs:"
     podman logs "$container_name" 2>&1
     return 1
 }
 
-# Function to run a container
+# Function to start a container
 start_container() {
     local container_name=$1
-    current_container="$container_name"
+    display_header
 
-    clear
-    display_info "Starting container $container_name..."
+    if [ -z "$container_name" ]; then
+        read -p "Enter the container name to start: " container_name
+    fi
+
+    if ! podman container exists "$container_name"; then
+        error_msg "Container $container_name does not exist."
+        pause
+        return 1
+    fi
 
     reapply_permissions "$container_name"
 
-    # Start the container
+    info_msg "Starting container $container_name..."
     podman start "$container_name"
 
-    # Wait for the container to be fully running
     if ! wait_for_container_running "$container_name"; then
-        display_error "Container $container_name did not start properly."
-
-        # Check container logs for errors
-        display_info "Container logs:"
+        error_msg "Container $container_name did not start properly."
+        echo "Container logs:"
         podman logs "$container_name" 2>&1
 
-        # Try to restart the container if it failed
-        display_info "Attempting to restart container $container_name..."
+        warning_msg "Attempting to restart container $container_name..."
         podman restart "$container_name"
 
-        # Wait again
         if ! wait_for_container_running "$container_name"; then
-            display_error "Container $container_name failed to start after restart."
-            pause_for_input
+            error_msg "Container $container_name failed to start after restart."
+            pause
             return 1
         fi
     fi
 
     update_rootless_user "$container_name"
-    display_success "Container $container_name started successfully."
-    pause_for_input
+    success_msg "Container $container_name started successfully."
+    pause
 }
 
 # Function to stop a container
 stop_container() {
     local container_name=$1
-    current_container="$container_name"
+    display_header
 
-    clear
-    display_info "Stopping container $container_name..."
+    if [ -z "$container_name" ]; then
+        read -p "Enter the container name to stop: " container_name
+    fi
 
-    # Only update .env if this was called from option 3 in the menu
+    if ! podman container exists "$container_name"; then
+        error_msg "Container $container_name does not exist."
+        pause
+        return 1
+    fi
+
     if [[ "$choice" == "3" ]]; then
         update_rootless_user "$container_name"
     fi
 
+    info_msg "Stopping container $container_name..."
     podman stop "$container_name"
-    display_success "Container $container_name stopped successfully."
-    pause_for_input
+    success_msg "Container $container_name stopped successfully."
+    pause
 }
 
 # Function to create new folders in appdata
@@ -156,8 +183,7 @@ create_appdata_folders() {
     local container_name=$1
     local appdata_dir="$base_dir/$container_name/appdata"
 
-    clear
-    display_info "Checking for new folders to create in $appdata_dir..."
+    info_msg "Checking for new folders to create in $appdata_dir..."
 
     while true; do
         read -p "Enter a folder name to create in appdata (leave empty to finish): " folder_name
@@ -165,14 +191,11 @@ create_appdata_folders() {
             break
         fi
 
-        # Create the folder
         sudo mkdir -p "$appdata_dir/$folder_name"
-        display_success "Created folder: $appdata_dir/$folder_name"
+        success_msg "Created folder: $appdata_dir/$folder_name"
 
-        # Apply permissions
         sudo chmod 700 "$appdata_dir/$folder_name"
 
-        # If rootless_user is set, apply it
         if [ -n "$rootless_user" ]; then
             podman unshare chown "$rootless_user:$rootless_user" "$appdata_dir/$folder_name"
         fi
@@ -182,109 +205,69 @@ create_appdata_folders() {
 # Function to decompose a container (stop and remove containers)
 decompose_container() {
     local container_name=$1
-    current_container="$container_name"
+    display_header
 
-    clear
-    display_info "Decomposing container $container_name..."
+    if [ -z "$container_name" ]; then
+        read -p "Enter the container name to decompose: " container_name
+    fi
+
+    if ! podman container exists "$container_name"; then
+        error_msg "Container $container_name does not exist."
+        pause
+        return 1
+    fi
+
+    info_msg "Decomposing container $container_name..."
 
     # Update rootless_user before decomposing
     update_rootless_user "$container_name"
 
     podman-compose --file "$base_dir/$container_name/compose.yaml" down
-    display_success "Container $container_name decomposed successfully."
-    pause_for_input
+    success_msg "Container $container_name decomposed successfully."
+    pause
 }
 
 # Function to compose a container (start containers)
 compose_container() {
     local container_name=$1
-    current_container="$container_name"
+    display_header
 
-    clear
-    display_info "Composing container $container_name..."
+    if [ -z "$container_name" ]; then
+        read -p "Enter the container name to compose: " container_name
+    fi
+
+    if ! podman container exists "$container_name"; then
+        error_msg "Container $container_name does not exist."
+        pause
+        return 1
+    fi
+
+    info_msg "Composing container $container_name..."
 
     update_rootless_user "$container_name"
     reapply_permissions "$container_name"
 
     podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
-    display_success "Container $container_name composed successfully."
-    pause_for_input
-}
-
-# Function to recompose a container (decompose and then compose)
-recompose_container() {
-    local container_name=$1
-    current_container="$container_name"
-
-    clear
-    display_info "Recomposing container $container_name..."
-
-    decompose_container "$container_name"
-    compose_container "$container_name"
-
-    display_success "Container $container_name recomposed successfully."
-    pause_for_input
-}
-
-# Function to edit files using Rancher
-edit_files_with_rancher() {
-    local container_name=$1
-    current_container="$container_name"
-
-    clear
-    display_info "Preparing to edit files for container $container_name..."
-
-    # Check if Rancher is installed
-    if ! command -v rancher &> /dev/null; then
-        display_warning "Rancher is not installed. Installing now..."
-
-        # Update and upgrade system
-        display_info "Updating system packages..."
-        sudo apt-get update -y
-        sudo apt-get upgrade -y
-
-        # Install Rancher
-        display_info "Installing Rancher..."
-        sudo apt-get install -y rancher
-
-        if ! command -v rancher &> /dev/null; then
-            display_error "Failed to install Rancher. Please install it manually."
-            pause_for_input
-            return 1
-        fi
-    fi
-
-    # Get container ID
-    local container_id=$(podman ps -aqf "name=$container_name")
-    if [ -z "$container_id" ]; then
-        display_error "Container $container_name not found."
-        pause_for_input
-        return 1
-    fi
-
-    # Start Rancher with the container's filesystem
-    display_info "Starting Rancher to edit files for container $container_name..."
-    display_info "You can now navigate and edit files. Important commands:"
-    display_info "- To create a new file: Press 'a' in normal mode, then type the filename"
-    display_info "- To edit a file: Move cursor to file and press 'i' to enter insert mode"
-    display_info "- To delete a file: Move cursor to file and press 'd' then 'd'"
-    display_info "- To save changes: Press ':wq' in normal mode"
-    display_info "- To quit without saving: Press ':q!' in normal mode"
-
-    # Run Rancher with the container's root filesystem
-    sudo rancher --container "$container_id" --root
-
-    display_success "Finished editing files for container $container_name."
-    pause_for_input
+    success_msg "Container $container_name composed successfully."
+    pause
 }
 
 # Function to create a new container
 create_container() {
     local container_name=$1
-    current_container="$container_name"
+    display_header
 
-    clear
-    display_info "Creating new container: $container_name"
+    if [ -z "$container_name" ]; then
+        read -p "Enter the new container name: " container_name
+    fi
+
+    if [ -d "$base_dir/$container_name" ]; then
+        error_msg "Container $container_name already exists."
+        pause
+        return 1
+    fi
+
+    info_msg "Creating container $container_name..."
 
     # Create container directories
     sudo mkdir -p "$base_dir/$container_name"
@@ -293,11 +276,11 @@ create_container() {
     sudo mkdir -p "$base_dir/$container_name/secrets"
 
     # Create compose.yaml
-    display_info "Creating compose.yaml file..."
+    info_msg "Creating compose.yaml file..."
     sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
 
     # Create .env file
-    display_info "Creating .env file..."
+    info_msg "Creating .env file..."
     sudo sh -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
@@ -308,7 +291,7 @@ create_container() {
     fi
 
     reapply_permissions "$container_name"
-    display_success "Container $container_name created successfully."
+    success_msg "Container $container_name created successfully."
 
     # Ask to run the container
     read -p "Do you want to compose the container now? (y/n): " compose_now
@@ -316,15 +299,76 @@ create_container() {
         compose_container "$container_name"
     fi
 
-    pause_for_input
+    pause
+}
+
+# Function to edit container files using ranger
+edit_container_files() {
+    local container_name=$1
+    display_header
+
+    if [ -z "$container_name" ]; then
+        read -p "Enter the container name to edit files: " container_name
+    fi
+
+    if ! podman container exists "$container_name"; then
+        error_msg "Container $container_name does not exist."
+        pause
+        return 1
+    fi
+
+    # Check if ranger is installed
+    if ! command -v ranger &> /dev/null; then
+        warning_msg "Ranger is not installed. Installing now..."
+
+        # Update and upgrade system
+        sudo apt-get update && sudo apt-get upgrade -y
+
+        # Install ranger
+        sudo apt-get install -y ranger
+
+        if ! command -v ranger &> /dev/null; then
+            error_msg "Failed to install ranger. Please install it manually."
+            pause
+            return 1
+        fi
+
+        success_msg "Ranger installed successfully."
+    fi
+
+    # Set the current container for reference
+    current_container="$container_name"
+
+    # Display instructions
+    display_header
+    echo -e "${BLUE}RANGER FILE NAVIGATOR INSTRUCTIONS${NC}"
+    echo "----------------------------------------"
+    echo "1. Use arrow keys to navigate files and directories"
+    echo "2. Press 'Enter' to open a file or directory"
+    echo "3. Press 'i' to view file information"
+    echo "4. Press 'e' to edit a file (uses your default editor)"
+    echo "5. Press 'c' to create a new file"
+    echo "6. Press 'd' to delete a file or directory"
+    echo "7. Press 'q' to quit ranger"
+    echo ""
+    echo "You are currently editing files for container: ${GREEN}$container_name${NC}"
+    echo "All changes will be made to: ${GREEN}$base_dir/$container_name${NC}"
+    echo ""
+
+    pause
+
+    # Launch ranger in the container's directory
+    ranger "$base_dir/$container_name"
+
+    success_msg "File editing session completed for container $container_name."
+    pause
 }
 
 # Apply user permissions
 reapply_permissions() {
     local container_name=$1
 
-    clear
-    display_info "Applying permissions for container $container_name..."
+    info_msg "Applying permissions for container $container_name..."
 
     # Set directory permissions
     sudo chmod 700 "$base_dir/$container_name"
@@ -341,13 +385,11 @@ reapply_permissions() {
     if [ -f "$base_dir/$container_name/.env" ]; then
         load_rootless_user "$container_name"
         if [ -n "$rootless_user" ]; then
-            # Use podman unshare to change ownership inside the container's user namespace
             podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"
         fi
     fi
 
-    display_success "Permissions applied successfully."
-    pause_for_input
+    success_msg "Permissions applied successfully."
 }
 
 # Load rootless_user from .env
@@ -356,14 +398,14 @@ load_rootless_user() {
     local env_file="$base_dir/$container_name/.env"
 
     if [[ ! -r "$env_file" ]]; then
-        display_error "Cannot read $env_file"
+        error_msg "Cannot read $env_file"
         return 1
     fi
 
     # Get the line rootless_user=...
     local line
     line=$(sudo grep -m1 -E '^[[:space:]]*rootless_user[[:space:]]*=' "$env_file") || {
-        display_error "rootless_user not found in $env_file"
+        error_msg "rootless_user not found in $env_file"
         return 1
     }
 
@@ -374,7 +416,7 @@ load_rootless_user() {
     val=$(printf '%s\n' "$val" | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/")
 
     if [[ -z "$val" ]]; then
-        display_error "rootless_user value is empty in $env_file"
+        error_msg "rootless_user value is empty in $env_file"
         return 1
     fi
 
@@ -387,15 +429,12 @@ update_rootless_user() {
     local container_name=$1
     local env_file="$base_dir/$container_name/.env"
 
-    clear
-    display_info "Updating rootless_user for container $container_name..."
-
     # Get HUSER for user "abc"
     local podman_huser
     podman_huser=$(podman top "$container_name" user huser 2>/dev/null | awk 'NR>1 && $1=="abc" {print $2; exit}')
 
     if [ -z "$podman_huser" ]; then
-        display_warning "Could not determine HUSER for user 'abc' in container '$container_name'. Is it running and does user exist?"
+        warning_msg "Could not determine HUSER for user 'abc' in container '$container_name'. Is it running and does user exist?"
         return 1
     fi
 
@@ -422,17 +461,32 @@ update_rootless_user() {
         sudo sh -c "printf 'rootless_user=%s\n' '$podman_huser' > '$env_file'"
     fi
 
-    display_success "Updated rootless_user in .env"
-    pause_for_input
+    success_msg "Updated rootless_user in .env"
 }
 
 # Function to remove a container
 remove_container() {
     local container_name=$1
-    current_container="$container_name"
+    display_header
 
-    clear
-    display_info "Removing container $container_name..."
+    if [ -z "$container_name" ]; then
+        read -p "Enter the container name to remove: " container_name
+    fi
+
+    if ! podman container exists "$container_name"; then
+        error_msg "Container $container_name does not exist."
+        pause
+        return 1
+    fi
+
+    warning_msg "You are about to remove container $container_name."
+    read -p "Are you sure you want to continue? (y/n): " confirm
+
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        info_msg "Container removal cancelled."
+        pause
+        return 0
+    fi
 
     # Stop the container first
     stop_container "$container_name"
@@ -449,86 +503,51 @@ remove_container() {
         read -p "!! Are you sure you want to remove ALL container data from $container_name? !! (y/n): " remove_container_data_sure
         if [[ "$remove_container_data_sure" =~ ^[Yy]$ ]]; then
             sudo rm -rf "$base_dir/$container_name"
-            display_success "ALL container data removed from $container_name."
+            success_msg "ALL container data removed from $container_name."
         fi
     fi
 
-    display_success "Container $container_name removed successfully."
-    pause_for_input
+    success_msg "Container $container_name removed successfully."
+    pause
 }
 
-# Main menu
-main_menu() {
-    while true; do
-        clear
-        echo -e "${BLUE}========================================${NC}"
-        echo -e "${BLUE}   Podman Container Management Tool   ${NC}"
-        echo -e "${BLUE}========================================${NC}"
-        echo ""
-        echo -e "${GREEN}1. List all containers${NC}"
-        echo -e "${GREEN}2. Start a container${NC}"
-        echo -e "${GREEN}3. Stop a container${NC}"
-        echo -e "${GREEN}4. Create a new container${NC}"
-        echo -e "${GREEN}5. Compose a container${NC}"
-        echo -e "${GREEN}6. Decompose a container${NC}"
-        echo -e "${GREEN}7. Recompose a container${NC}"
-        echo -e "${GREEN}8. Edit container files with Rancher${NC}"
-        echo -e "${GREEN}9. Remove a container${NC}"
-        echo -e "${RED}0. Exit${NC}"
-        echo ""
-        echo -e "${BLUE}Current container: ${current_container:-None}${NC}"
-        echo -e "${BLUE}========================================${NC}"
+# Main program loop
+while true; do
+    display_menu
+    read -p "Enter your choice (1-9): " choice
 
-        read -p "Enter your choice (0-9): " choice
-
-        case $choice in
-            1)
-                list_containers
-                ;;
-            2)
-                read -p "Enter the container name to start: " container_name
-                start_container "$container_name"
-                ;;
-            3)
-                read -p "Enter the container name to stop: " container_name
-                stop_container "$container_name"
-                ;;
-            4)
-                read -p "Enter the new container name: " container_name
-                create_container "$container_name"
-                ;;
-            5)
-                read -p "Enter the container name to compose: " container_name
-                compose_container "$container_name"
-                ;;
-            6)
-                read -p "Enter the container name to decompose: " container_name
-                decompose_container "$container_name"
-                ;;
-            7)
-                read -p "Enter the container name to recompose: " container_name
-                recompose_container "$container_name"
-                ;;
-            8)
-                read -p "Enter the container name to edit files: " container_name
-                edit_files_with_rancher "$container_name"
-                ;;
-            9)
-                read -p "Enter the container name to remove: " container_name
-                remove_container "$container_name"
-                ;;
-            0)
-                clear
-                display_info "Exiting Podman Container Management Tool..."
-                exit 0
-                ;;
-            *)
-                display_error "Invalid choice. Please enter a number between 0 and 9."
-                pause_for_input
-                ;;
-        esac
-    done
-}
-
-# Start the application
-main_menu
+    case $choice in
+        1)
+            list_containers
+            ;;
+        2)
+            start_container ""
+            ;;
+        3)
+            stop_container ""
+            ;;
+        4)
+            create_container ""
+            ;;
+        5)
+            compose_container ""
+            ;;
+        6)
+            decompose_container ""
+            ;;
+        7)
+            edit_container_files ""
+            ;;
+        8)
+            remove_container ""
+            ;;
+        9)
+            echo -e "${BLUE}Exiting...${NC}"
+            exit 0
+            ;;
+        *)
+            error_msg "Invalid choice. Please enter a number between 1 and 9."
+            pause
+            ;;
+    esac
+done
