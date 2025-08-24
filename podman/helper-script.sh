@@ -18,25 +18,25 @@ create_container() {
 #    passwd -l "$container_name"
 
     # Create container directories
-    mkdir -p "$base_dir/$container_name"
-    mkdir -p "$base_dir/$container_name/appdata"
-    mkdir -p "$base_dir/$container_name/logs"
-    mkdir -p "$base_dir/$container_name/secrets"
+    sudo mkdir -p "$base_dir/$container_name"
+    sudo mkdir -p "$base_dir/$container_name/appdata"
+    sudo mkdir -p "$base_dir/$container_name/logs"
+    sudo mkdir -p "$base_dir/$container_name/secrets"
     
     # Create compose.yaml
-    ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
+    sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
     
     # Optional .env
-    echo -e "PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"" > "$base_dir/$container_name/.env"
-    ${EDITOR:-nano} "$base_dir/$container_name/.env"
+    sudo echo -e "PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"" > "$base_dir/$container_name/.env"
+    sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
     # Apply user permissions
-    chmod 700 "$base_dir/$container_name"
-    chmod 700 "$base_dir/$container_name/appdata"
-    chmod 700 "$base_dir/$container_name/logs"
-    chmod 400 "$base_dir/$container_name/secrets"
-    chmod 400 "$base_dir/$container_name/compose.yaml"
-    chmod 400 "$base_dir/$container_name/.env"
+    sudo chmod 700 "$base_dir/$container_name"
+    sudo chmod 700 "$base_dir/$container_name/appdata"
+    sudo chmod 700 "$base_dir/$container_name/logs"
+    sudo chmod 400 "$base_dir/$container_name/secrets"
+    sudo chmod 400 "$base_dir/$container_name/compose.yaml"
+    sudo chmod 400 "$base_dir/$container_name/.env"
     chown -R podman:podman "$base_dir/$container_name"
     podman unshare chown -R 1000:1000 "$base_dir/$container_name"
     
@@ -73,7 +73,7 @@ remove_container() {
     read -p "Enter the container name to remove: " container_name
 #    stop_container $container_name
     podman rm "$container_name"
-    rm -rf "$base_dir/$container_name"
+    sudo rm -rf "$base_dir/$container_name"
     echo "Container $container_name removed successfully."
 }
 
