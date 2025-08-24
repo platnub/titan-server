@@ -233,53 +233,67 @@ decompose_container() {
     local result=0
     display_header
     info_msg "Decomposing container: $container_name"
+
     # Check if container exists
-    if ! container_exists "$container_name"; then
-        error_msg "Container $container_name does not exist."
+    if container_exists "$container_name"; then
+        # Stop the container first
+        if ! stop_container "$container_name"; then
+            error_msg "Failed to stop container $container_name before decomposing."
+            result=1
+        fi
+    else
+        info_msg "Container $container_name does not exist, skipping stop."
+    fi
+
+    # Check if container directory exists
+    if ! container_dir_exists "$container_name"; then
+        error_msg "Container directory $base_dir/$container_name does not exist."
         return 1
     fi
-    if podman-compose --file "$base_dir/$container_name/compose.yaml" down; then
+
+    # Check if compose.yaml exists
+    if [ ! -f "$base_dir/$container_name/compose.yaml" ]; then
+        error_msg "compose.yaml file not found in $base_dir/$container_name"
+        return 1
+    fi
+
+    # Use sudo to run podman-compose with the compose file
+    if sudo podman-compose --file "$base_dir/$container_name/compose.yaml" down; then
         success_msg "Container $container_name decomposed successfully."
     else
         error_msg "Failed to decompose container $container_name."
         result=1
     fi
+
     return $result
 }
 # Function to compose a container (start containers)
 compose_container() {
     local container_name=$1
-    local compose_file="$base_dir/$container_name/compose.yaml"
     local result=0
-
     display_header
     info_msg "Composing container: $container_name"
 
     # Check if container directory exists
     if ! container_dir_exists "$container_name"; then
-        error_msg "Container directory for $container_name does not exist at $base_dir/$container_name."
+        error_msg "Container directory $base_dir/$container_name does not exist."
         return 1
     fi
 
-    # Check if compose file exists
-    if [ ! -f "$compose_file" ]; then
-        error_msg "Compose file not found at $compose_file"
+    # Check if compose.yaml exists
+    if [ ! -f "$base_dir/$container_name/compose.yaml" ]; then
+        error_msg "compose.yaml file not found in $base_dir/$container_name"
         return 1
     fi
 
     update_rootless_user "$container_name"
     reapply_permissions "$container_name"
 
-    # Use podman-compose with the compose file
-    if podman-compose --file "$compose_file" up --detach; then
+    # Use sudo to run podman-compose with the compose file
+    if sudo podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach; then
         success_msg "Container $container_name composed successfully."
     else
         error_msg "Failed to compose container $container_name."
-        # Show logs if available
-        if [ -n "$(podman ps -a --filter name=$container_name --format '{{.Names}}')" ]; then
-            warning_msg "Container logs:"
-            podman logs "$container_name" 2>&1
-        fi
         result=1
     fi
 
@@ -288,30 +302,20 @@ compose_container() {
 # Function to recompose a container (decompose and then compose)
 recompose_container() {
     local container_name=$1
-    local compose_file="$base_dir/$container_name/compose.yaml"
     local result=0
-
     display_header
     info_msg "Recomposing container: $container_name"
 
     # Check if container directory exists
     if ! container_dir_exists "$container_name"; then
-        error_msg "Container directory for $container_name does not exist at $base_dir/$container_name."
+        error_msg "Container directory $base_dir/$container_name does not exist."
         return 1
     fi
 
-    # Check if compose file exists
-    if [ ! -f "$compose_file" ]; then
-        error_msg "Compose file not found at $compose_file"
-        return 1
-    fi
-
-    # First decompose the container
     if ! decompose_container "$container_name"; then
         result=1
     fi
 
-    # Then compose it again
     if ! compose_container "$container_name"; then
         result=1
     fi
@@ -401,11 +405,13 @@ reapply_permissions() {
     local result=0
     display_header
     info_msg "Applying permissions for container: $container_name"
-    # Check if container exists
-    if ! container_exists "$container_name"; then
-        error_msg "Container $container_name does not exist."
+
+    # Check if container directory exists
+    if ! container_dir_exists "$container_name"; then
+        error_msg "Container directory $base_dir/$container_name does not exist."
         return 1
     fi
+
     # Set directory permissions
     if sudo chmod 700 "$base_dir/$container_name"; then
         success_msg "Set permissions for base directory"
@@ -507,6 +513,13 @@ update_rootless_user() {
     local container_name=$1
     local env_file="$base_dir/$container_name/.env"
     local result=0
+
+    # Check if container exists
+    if ! container_exists "$container_name"; then
+        error_msg "Container $container_name does not exist."
+        return 1
+    fi
+
     # Get HUSER for user "abc"
     local podman_huser
     podman_huser=$(podman top "$container_name" user huser 2>/dev/null | awk 'NR>1 && $1=="abc" {print $2; exit}')
@@ -514,6 +527,7 @@ update_rootless_user() {
         error_msg "Could not determine HUSER for user 'abc' in container '$container_name'. Is it running and does user exist?"
         return 1
     fi
+
     if [ -e "$env_file" ]; then
         # Check if file is writable, if not make it writable temporarily
         if [ ! -w "$env_file" ]; then
@@ -562,26 +576,30 @@ remove_container() {
         return 1
     fi
     info_msg "Removing container: $container_name"
+
     # Check if container exists
-    if ! container_exists "$container_name"; then
-        error_msg "Container $container_name does not exist."
-        return 1
-    fi
-    # Stop the container first
-    if ! stop_container "$container_name"; then
-        result=1
-    fi
-    # Remove the container
-    if podman rm "$container_name"; then
-        success_msg "Container $container_name removed."
+    if container_exists "$container_name"; then
+        # Stop the container first
+        if ! stop_container "$container_name"; then
+            result=1
+        fi
+
+        # Remove the container
+        if podman rm "$container_name"; then
+            success_msg "Container $container_name removed."
+        else
+            error_msg "Failed to remove container $container_name."
+            result=1
+        fi
     else
-        error_msg "Failed to remove container $container_name."
-        result=1
+        info_msg "Container $container_name does not exist, skipping removal."
     fi
+
     # Decompose the container
     if ! decompose_container "$container_name"; then
         result=1
     fi
+
     # Ask to remove ALL container data
     if confirm_warning "You are about to remove ALL DATA for container '$container_name'"; then
         if confirm_warning "THIS WILL PERMANENTLY DELETE ALL DATA FOR '$container_name' INCLUDING CONFIGURATION FILES, APPLICATION DATA, AND LOGS"; then
@@ -597,6 +615,7 @@ remove_container() {
     else
         warning_msg "Container data removal cancelled."
     fi
+
     if [ $result -eq 0 ]; then
         success_msg "Container $container_name removed successfully."
     else
@@ -612,12 +631,6 @@ edit_container_files() {
     local result=0
 
     display_header
-
-    # Check if container exists
-    if ! container_exists "$container_name"; then
-        error_msg "Container $container_name does not exist."
-        return 1
-    fi
 
     # Check if container directory exists
     if ! container_dir_exists "$container_name"; then
