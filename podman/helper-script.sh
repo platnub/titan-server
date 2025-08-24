@@ -10,7 +10,7 @@ list_containers() {
 # Function to run a container
 run_container() {
     local container_name=$1
-    reapply_permissions
+    reapply_permissions "$container_name"
     podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
     update_rootless_user "$container_name"
     echo "Container $container_name started successfully."
