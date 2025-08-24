@@ -55,6 +55,15 @@ create_container() {
 reapply_permissions() {
     local container_name=$1
 
+    sudo chmod 700 "$base_dir/$container_name"
+    sudo chmod 700 "$base_dir/$container_name/appdata"
+    sudo chmod 700 "$base_dir/$container_name/logs"
+    sudo chmod 400 "$base_dir/$container_name/secrets"
+    sudo chmod 400 "$base_dir/$container_name/compose.yaml"
+    sudo chmod 400 "$base_dir/$container_name/.env"
+
+    ( cd "$base_dir/$container_name" && sudo chown podman:podman * )
+    
     # Load rootless_user if it exists
     if [ -f "$base_dir/$container_name/.env" ]; then
         load_rootless_user "$container_name"
