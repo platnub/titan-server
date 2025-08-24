@@ -204,7 +204,7 @@ while true; do
     echo "5. Recompose a container"
     echo "99. Remove a container"
     echo "6. Exit"
-    read -p "Enter your choice (1-5): " choice
+    read -p "Enter your choice (1-6): " choice
 
     case $choice in
         1)
