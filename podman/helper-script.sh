@@ -10,16 +10,16 @@ list_containers() {
 # Function to run a container
 run_container() {
     local container_name=$1
-    reapply_permissions $base_dir $container_name
+    reapply_permissions "$container_name"
     podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
-    update_rootless_user $base_dir $container_name
+    update_rootless_user "$container_name"
     echo "Container $container_name started successfully."
 }
 
 # Function to stop a container
 stop_container() {
     local container_name=$1
-    update_rootless_user $base_dir $container_name
+    update_rootless_user "$container_name"
     podman-compose --file "$base_dir/$container_name/compose.yaml" down
     echo "Container $container_name stopped successfully."
 }
@@ -41,7 +41,7 @@ create_container() {
     sudo sh -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
-    reapply_permissions $base_dir $container_name
+    reapply_permissions "$container_name"
     echo "Container $container_name created successfully."
 
     # Ask to run the container
@@ -55,6 +55,7 @@ create_container() {
 reapply_permissions() {
     local container_name=$1
 
+    # Set directory permissions
     sudo chmod 700 "$base_dir/$container_name"
     sudo chmod 700 "$base_dir/$container_name/appdata"
     sudo chmod 700 "$base_dir/$container_name/logs"
@@ -62,12 +63,14 @@ reapply_permissions() {
     sudo chmod 400 "$base_dir/$container_name/compose.yaml"
     sudo chmod 400 "$base_dir/$container_name/.env"
 
-    ( cd "$base_dir/$container_name" && sudo chown podman:podman * )
-    
+    # Change ownership to podman user
+    sudo chown -R podman:podman "$base_dir/$container_name"
+
     # Load rootless_user if it exists
     if [ -f "$base_dir/$container_name/.env" ]; then
         load_rootless_user "$container_name"
         if [ -n "$rootless_user" ]; then
+            # Use podman unshare to change ownership inside the container's user namespace
             podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"
         fi
     fi
@@ -206,7 +209,7 @@ while true; do
             remove_container "$container_name"
             ;;
         *)
-            echo "Invalid choice. Please enter a number between 1 and 6."
+            echo "Invalid choice. Please enter a number between 1 and 5."
             ;;
     esac
 done
