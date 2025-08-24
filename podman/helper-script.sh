@@ -8,18 +8,18 @@ create_container() {
 
     # Create a non-login system user with the given UID
     # -r system user, -U create group, -M no home, -s nologin shell
-    if ! id -u "$username" >/dev/null 2>&1; then
-      sudo useradd -r -U -u "$user_id" -M -s /usr/sbin/nologin -d "$base_dir/$container_name" "$username"
+    if ! id -u "$container_name" >/dev/null 2>&1; then
+      useradd -r -U -u "$user_id" -M -s /usr/sbin/nologin -d "$base_dir/$container_name" "$container_name"
     else
-      echo "User $username already exists; skipping creation."
+      echo "User $container_name already exists; skipping creation."
     fi
 
     # Lock password to prevent password-based login
-    sudo passwd -l "$username"
+    passwd -l "$container_name"
 
     # Create container directory and set ownership
-    sudo mkdir -p "$base_dir/$container_name"
-    sudo chown -R "$username:$username" "$base_dir/$container_name"
+    mkdir -p "$base_dir/$container_name"
+    chown -R "$container_name:$container_name" "$base_dir/$container_name"
     
     # Create compose.yaml
     ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
@@ -31,7 +31,8 @@ create_container() {
     fi
 
     # Apply user permissions
-    chmod $user_id $base_dir/$container_name
+    #chmod 600 $base_dir/$container_name
+    #chown -R "$container_name" "$base_dir/$container_name"
 
     echo "Container $container_name created successfully with user."
 }
