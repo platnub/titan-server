@@ -80,6 +80,29 @@ confirm() {
     done
 }
 
+# Function to check if a container exists by name
+container_exists() {
+    local container_name=$1
+
+    # Check if the container exists by name (not image name)
+    if podman ps -a --format "{{.Names}}" | grep -q "^${container_name}$"; then
+        return 0  # Container exists
+    else
+        return 1  # Container does not exist
+    fi
+}
+
+# Function to check if a container directory exists
+container_dir_exists() {
+    local container_name=$1
+
+    if [ -d "$base_dir/$container_name" ]; then
+        return 0  # Directory exists
+    else
+        return 1  # Directory does not exist
+    fi
+}
+
 # Function to list all containers
 list_containers() {
     display_header
@@ -144,7 +167,7 @@ start_container() {
     info_msg "Starting container: $container_name"
 
     # Check if container exists
-    if ! podman inspect "$container_name" &>/dev/null; then
+    if ! container_exists "$container_name"; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
@@ -193,7 +216,7 @@ stop_container() {
     info_msg "Stopping container: $container_name"
 
     # Check if container exists
-    if ! podman inspect "$container_name" &>/dev/null; then
+    if ! container_exists "$container_name"; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
@@ -257,7 +280,7 @@ decompose_container() {
     info_msg "Decomposing container: $container_name"
 
     # Check if container exists
-    if ! podman inspect "$container_name" &>/dev/null; then
+    if ! container_exists "$container_name"; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
@@ -281,7 +304,7 @@ compose_container() {
     info_msg "Composing container: $container_name"
 
     # Check if container exists
-    if ! podman inspect "$container_name" &>/dev/null; then
+    if ! container_exists "$container_name"; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
@@ -308,7 +331,7 @@ recompose_container() {
     info_msg "Recomposing container: $container_name"
 
     # Check if container exists
-    if ! podman inspect "$container_name" &>/dev/null; then
+    if ! container_exists "$container_name"; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
@@ -332,10 +355,25 @@ create_container() {
     display_header
     info_msg "Creating new container: $container_name"
 
-    # Check if container already exists
-    if podman inspect "$container_name" &>/dev/null; then
-        error_msg "Container $container_name already exists."
+    # Check if container already exists by name
+    if container_exists "$container_name"; then
+        error_msg "A container with the name '$container_name' already exists."
         return 1
+    fi
+
+    # Check if container directory already exists
+    if container_dir_exists "$container_name"; then
+        error_msg "A directory for container '$container_name' already exists at $base_dir/$container_name."
+        if confirm "Would you like to overwrite the existing directory?"; then
+            if ! sudo rm -rf "$base_dir/$container_name"; then
+                error_msg "Failed to remove existing directory. Aborting."
+                return 1
+            fi
+            success_msg "Removed existing directory for container '$container_name'."
+        else
+            warning_msg "Container creation cancelled."
+            return 1
+        fi
     fi
 
     # Create container directories
@@ -410,7 +448,7 @@ reapply_permissions() {
     info_msg "Applying permissions for container: $container_name"
 
     # Check if container exists
-    if ! podman inspect "$container_name" &>/dev/null; then
+    if ! container_exists "$container_name"; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
@@ -600,7 +638,7 @@ remove_container() {
     info_msg "Removing container: $container_name"
 
     # Check if container exists
-    if ! podman inspect "$container_name" &>/dev/null; then
+    if ! container_exists "$container_name"; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
