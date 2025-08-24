@@ -9,6 +9,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
 MAGENTA='\033[1;35m'
 NC='\033[0m' # No Color
+
 # Function to display a header
 display_header() {
     clear
@@ -17,28 +18,34 @@ display_header() {
     echo -e "======================================================${NC}"
     echo
 }
+
 # Function to display a success message
 success_msg() {
     echo -e "${GREEN}[✓] $1${NC}"
 }
+
 # Function to display an error message
 error_msg() {
     echo -e "${RED}[✗] $1${NC}" >&2
 }
+
 # Function to display a warning message
 warning_msg() {
     echo -e "${YELLOW}[!] $1${NC}"
 }
+
 # Function to display an info message
 info_msg() {
     echo -e "${BLUE}[i] $1${NC}"
 }
+
 # Function to display a critical warning message
 critical_warning() {
     echo -e "${MAGENTA}======================================================"
     echo -e "  ${RED}WARNING: $1${NC}"
     echo -e "======================================================${NC}"
 }
+
 # Function to prompt for confirmation with warning styling
 confirm_warning() {
     local message=$1
@@ -56,6 +63,7 @@ confirm_warning() {
         esac
     done
 }
+
 # Function to prompt for confirmation
 confirm() {
     while true; do
@@ -68,6 +76,7 @@ confirm() {
         esac
     done
 }
+
 # Function to check if a container exists by name
 container_exists() {
     local container_name=$1
@@ -78,6 +87,7 @@ container_exists() {
         return 1  # Container does not exist
     fi
 }
+
 # Function to check if a container directory exists
 container_dir_exists() {
     local container_name=$1
@@ -87,6 +97,7 @@ container_dir_exists() {
         return 1  # Directory does not exist
     fi
 }
+
 # Function to list all containers
 list_containers() {
     display_header
@@ -95,20 +106,31 @@ list_containers() {
     podman ps -a --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}\t{{.Image}}"
     echo
 }
-# Function to wait for container to be fully running
+
+# Improved function to wait for container to be fully running
 wait_for_container_running() {
     local container_name=$1
     local max_attempts=60  # Increased timeout
     local attempt=0
     local status
     local health_status
+
     info_msg "Waiting for container $container_name to be fully running..."
+
     while [ $attempt -lt $max_attempts ]; do
+        # First check if container exists
+        if ! container_exists "$container_name"; then
+            error_msg "Container $container_name does not exist."
+            return 1
+        fi
+
         # Get container status
         status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
+
         if [ "$status" = "running" ]; then
             # Check if the container has a health check
             health_status=$(podman inspect -f '{{.State.Health.Status}}' "$container_name" 2>/dev/null)
+
             if [ -n "$health_status" ] && [ "$health_status" != "healthy" ]; then
                 # If there's a health check but it's not healthy yet
                 info_msg "Container $container_name is running but health check is $health_status..."
@@ -128,40 +150,51 @@ wait_for_container_running() {
             fi
             return 1
         fi
+
         attempt=$((attempt + 1))
         sleep 2
     done
+
     error_msg "Timeout waiting for container $container_name to start."
     info_msg "Current status: $status"
     warning_msg "Container logs:"
     podman logs "$container_name" 2>&1
     return 1
 }
+
 # Function to run a container
 start_container() {
     local container_name=$1
     local result=0
+
     display_header
     info_msg "Starting container: $container_name"
+
     # Check if container exists
     if ! container_exists "$container_name"; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
+
     reapply_permissions "$container_name"
+
     # Start the container
     info_msg "Starting container $container_name..."
     podman start "$container_name"
+
     # Wait for the container to be fully running
     if ! wait_for_container_running "$container_name"; then
         error_msg "Container $container_name did not start properly."
         result=1
+
         if confirm "Would you like to view the logs?"; then
             podman logs "$container_name" 2>&1
         fi
+
         if confirm "Would you like to attempt to restart the container?"; then
             info_msg "Attempting to restart container $container_name..."
             podman restart "$container_name"
+
             # Wait again
             if ! wait_for_container_running "$container_name"; then
                 error_msg "Container $container_name failed to start after restart."
@@ -174,47 +207,60 @@ start_container() {
         update_rootless_user "$container_name"
         success_msg "Container $container_name started successfully."
     fi
+
     return $result
 }
+
 # Function to stop a container
 stop_container() {
     local container_name=$1
     local result=0
+
     display_header
     info_msg "Stopping container: $container_name"
+
     # Check if container exists
     if ! container_exists "$container_name"; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
+
     # Only update .env if this was called from option 3 in the menu
     if [[ "$choice" == "3" ]]; then
         update_rootless_user "$container_name"
     fi
+
     if podman stop "$container_name"; then
         success_msg "Container $container_name stopped successfully."
     else
         error_msg "Failed to stop container $container_name."
         result=1
     fi
+
     return $result
 }
+
 # Function to create new folders in appdata
 create_appdata_folders() {
     local container_name=$1
     local appdata_dir="$base_dir/$container_name/appdata"
     local result=0
+
     info_msg "Checking for new folders to create in $appdata_dir..."
+
     while true; do
         read -p "Enter a folder name to create in appdata (leave empty to finish): " folder_name
         if [[ -z "$folder_name" ]]; then
             break
         fi
+
         # Create the folder
         if sudo mkdir -p "$appdata_dir/$folder_name"; then
             success_msg "Created folder: $appdata_dir/$folder_name"
+
             # Apply permissions
             sudo chmod 700 "$appdata_dir/$folder_name"
+
             # If rootless_user is set, apply it
             if [ -n "$rootless_user" ]; then
                 podman unshare chown "$rootless_user:$rootless_user" "$appdata_dir/$folder_name"
@@ -225,12 +271,15 @@ create_appdata_folders() {
             result=1
         fi
     done
+
     return $result
 }
+
 # Function to decompose a container (stop and remove containers)
 decompose_container() {
     local container_name=$1
     local result=0
+
     display_header
     info_msg "Decomposing container: $container_name"
 
@@ -267,10 +316,12 @@ decompose_container() {
 
     return $result
 }
+
 # Function to compose a container (start containers)
 compose_container() {
     local container_name=$1
     local result=0
+
     display_header
     info_msg "Composing container: $container_name"
 
@@ -308,10 +359,12 @@ compose_container() {
 
     return $result
 }
+
 # Function to recompose a container (decompose and then compose)
 recompose_container() {
     local container_name=$1
     local result=0
+
     display_header
     info_msg "Recomposing container: $container_name"
 
@@ -331,17 +384,21 @@ recompose_container() {
 
     return $result
 }
+
 # Function to create a new container
 create_container() {
     local container_name=$1
     local result=0
+
     display_header
     info_msg "Creating new container: $container_name"
+
     # Check if container already exists by name
     if container_exists "$container_name"; then
         error_msg "A container with the name '$container_name' already exists."
         return 1
     fi
+
     # Check if container directory already exists
     if container_dir_exists "$container_name"; then
         error_msg "A directory for container '$container_name' already exists at $base_dir/$container_name."
@@ -356,6 +413,7 @@ create_container() {
             return 1
         fi
     fi
+
     # Create container directories
     if sudo mkdir -p "$base_dir/$container_name"; then
         success_msg "Created base directory: $base_dir/$container_name"
@@ -363,40 +421,49 @@ create_container() {
         error_msg "Failed to create base directory."
         return 1
     fi
+
     if sudo mkdir -p "$base_dir/$container_name/appdata"; then
         success_msg "Created appdata directory"
     else
         error_msg "Failed to create appdata directory."
         result=1
     fi
+
     if sudo mkdir -p "$base_dir/$container_name/logs"; then
         success_msg "Created logs directory"
     else
         error_msg "Failed to create logs directory."
         result=1
     fi
+
     if sudo mkdir -p "$base_dir/$container_name/secrets"; then
         success_msg "Created secrets directory"
     else
         error_msg "Failed to create secrets directory."
         result=1
     fi
+
     # Create compose.yaml
     info_msg "Creating compose.yaml file..."
     sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
+
     # Create .env file
     info_msg "Creating .env file..."
     sudo sh -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
+
     # Ask to create new folders in appdata
     if confirm "Do you want to create any new folders in the appdata directory?"; then
         if ! create_appdata_folders "$container_name"; then
             result=1
         fi
     fi
+
     reapply_permissions "$container_name"
+
     if [ $result -eq 0 ]; then
         success_msg "Container $container_name created successfully."
+
         # Ask to run the container
         if confirm "Do you want to compose the container now?"; then
             if ! compose_container "$container_name"; then
@@ -406,12 +473,15 @@ create_container() {
     else
         error_msg "Container creation completed with errors."
     fi
+
     return $result
 }
+
 # Apply user permissions
 reapply_permissions() {
     local container_name=$1
     local result=0
+
     display_header
     info_msg "Applying permissions for container: $container_name"
 
@@ -428,18 +498,21 @@ reapply_permissions() {
         error_msg "Failed to set permissions for base directory"
         result=1
     fi
+
     if sudo chmod 700 "$base_dir/$container_name/appdata"; then
         success_msg "Set permissions for appdata directory"
     else
         error_msg "Failed to set permissions for appdata directory"
         result=1
     fi
+
     if sudo chmod 700 "$base_dir/$container_name/logs"; then
         success_msg "Set permissions for logs directory"
     else
         error_msg "Failed to set permissions for logs directory"
         result=1
     fi
+
     if sudo chmod 400 "$base_dir/$container_name/secrets"; then
         success_msg "Set permissions for secrets directory"
     else
@@ -501,8 +574,10 @@ reapply_permissions() {
     else
         error_msg "Permission application completed with errors."
     fi
+
     return $result
 }
+
 # Load rootless_user from .env
 load_rootless_user() {
     local container_name=$1
@@ -541,8 +616,10 @@ load_rootless_user() {
     rootless_user="$val"
     export rootless_user
     success_msg "Loaded rootless_user: $rootless_user"
+
     return $result
 }
+
 # Function to update rootless_user in .env
 update_rootless_user() {
     local container_name=$1
@@ -600,18 +677,23 @@ update_rootless_user() {
             result=1
         fi
     fi
+
     return $result
 }
+
 # Function to remove a container
 remove_container() {
     local container_name=$1
     local result=0
+
     display_header
+
     # First confirmation
     if ! confirm_warning "You are about to remove the container '$container_name'"; then
         warning_msg "Container removal cancelled."
         return 1
     fi
+
     info_msg "Removing container: $container_name"
 
     # Check if container exists
@@ -658,6 +740,7 @@ remove_container() {
     else
         error_msg "Container removal completed with errors."
     fi
+
     return $result
 }
 
