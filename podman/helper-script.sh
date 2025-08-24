@@ -264,6 +264,12 @@ reapply_permissions() {
 
     display_info "Applying permissions to container $container_name..."
 
+    # First stop the container if it's running
+    if podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null | grep -q "running"; then
+        display_info "Stopping container $container_name temporarily for permission changes..."
+        podman stop "$container_name"
+    fi
+
     # Set directory permissions (excluding appdata contents)
     sudo chmod 700 "$base_dir/$container_name"
     sudo chmod 700 "$base_dir/$container_name/appdata"
@@ -272,17 +278,27 @@ reapply_permissions() {
     sudo chmod 400 "$base_dir/$container_name/compose.yaml"
     sudo chmod 400 "$base_dir/$container_name/.env"
 
-    # Change ownership to podman user (excluding appdata contents)
-    sudo chown -R podman:podman "$base_dir/$container_name"
+    # Change ownership to podman user (only for directories, not contents)
+    sudo chown podman:podman "$base_dir/$container_name"
     sudo chown podman:podman "$base_dir/$container_name/appdata"
+    sudo chown podman:podman "$base_dir/$container_name/logs"
+    sudo chown podman:podman "$base_dir/$container_name/secrets"
 
     # Load rootless_user if it exists
     if [ -f "$base_dir/$container_name/.env" ]; then
         load_rootless_user "$container_name"
         if [ -n "$rootless_user" ]; then
             # Use podman unshare to change ownership inside the container's user namespace
-            podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"
+            # We'll use find to only change ownership of files, not directories
+            podman unshare find "$base_dir/$container_name/appdata" -type f -exec chown "$rootless_user:$rootless_user" {} \;
         fi
+    fi
+
+    # Restart the container if we stopped it
+    if podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null | grep -q "exited"; then
+        display_info "Restarting container $container_name..."
+        podman start "$container_name"
+        wait_for_container_running "$container_name"
     fi
 
     display_success "Permissions applied successfully."
