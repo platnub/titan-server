@@ -25,8 +25,8 @@ display_header() {
 display_footer() {
     echo ""
     echo -e "${BLUE}==============================================${NC}"
-    echo -e "${YELLOW}Press any key to continue...${NC}"
-    read -n 1 -s
+    echo -e "${YELLOW}Press [Enter] to continue...${NC}"
+    read -r
 }
 
 # Function to display error message
@@ -55,13 +55,13 @@ get_confirmation() {
     local default="${2:-n}"
 
     while true; do
-        read -p "$prompt [y/n] (default: $default): " answer
-        answer=${answer:-$default}
+        read -p "$prompt [y/n] (default: $default): " choice
+        choice="${choice:-$default}"
 
-        case "$answer" in
-            [Yy]*) return 0 ;;
-            [Nn]*) return 1 ;;
-            *) display_error "Please answer yes or no." ;;
+        case "$choice" in
+            y|Y) return 0 ;;
+            n|N) return 1 ;;
+            *) display_error "Please answer y or n." ;;
         esac
     done
 }
@@ -258,7 +258,7 @@ create_container() {
     display_footer
 }
 
-# Apply user permissions (excluding appdata contents)
+# Apply user permissions
 reapply_permissions() {
     local container_name=$1
 
@@ -266,35 +266,22 @@ reapply_permissions() {
 
     # Set directory permissions (excluding appdata contents)
     sudo chmod 700 "$base_dir/$container_name"
+    sudo chmod 700 "$base_dir/$container_name/appdata"
     sudo chmod 700 "$base_dir/$container_name/logs"
     sudo chmod 400 "$base_dir/$container_name/secrets"
     sudo chmod 400 "$base_dir/$container_name/compose.yaml"
     sudo chmod 400 "$base_dir/$container_name/.env"
 
     # Change ownership to podman user (excluding appdata contents)
-    # First set ownership for all files except appdata
-    find "$base_dir/$container_name" -mindepth 1 -maxdepth 1 ! -name "appdata" -exec sudo chown podman:podman {} + 2>/dev/null
-
-    # Then set ownership for the appdata directory itself (not its contents)
-    sudo chown podman:podman "$base_dir/$container_name/appdata" 2>/dev/null
+    sudo chown -R podman:podman "$base_dir/$container_name"
+    sudo chown podman:podman "$base_dir/$container_name/appdata"
 
     # Load rootless_user if it exists
     if [ -f "$base_dir/$container_name/.env" ]; then
         load_rootless_user "$container_name"
         if [ -n "$rootless_user" ]; then
             # Use podman unshare to change ownership inside the container's user namespace
-            # Only for appdata contents, not the directory itself
-            # First make sure all files are writable by the current user
-            sudo chmod -R u+w "$base_dir/$container_name/appdata" 2>/dev/null || true
-
-            # Then change ownership
-            podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/" 2>/dev/null || {
-                display_warning "Could not change ownership for some files in appdata. This might be normal for special files."
-            }
-
-            # Restore original permissions if needed
-            # This is a placeholder - you might want to implement specific permission restoration
-            # sudo chmod -R 644 "$base_dir/$container_name/appdata" 2>/dev/null || true
+            podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"
         fi
     fi
 
@@ -397,7 +384,7 @@ remove_container() {
 
     # Ask to remove ALL container data
     if get_confirmation "Do you want to remove ALL container data from $container_name?"; then
-        display_warning "WARNING: This will permanently delete ALL files for $container_name!"
+        display_warning "WARNING: This will permanently delete all files for $container_name!"
         display_warning "This action cannot be undone!"
 
         if get_confirmation "Are you ABSOLUTELY sure you want to delete ALL files for $container_name?" "n"; then
@@ -429,17 +416,15 @@ edit_container_files() {
             sudo apt-get update -y
             sudo apt-get upgrade -y
 
-            # Install required dependencies
+            # Install dependencies
             display_info "Installing required dependencies..."
             sudo apt-get install -y git python3 python3-pip python3-dev
 
-            # Clone and install ranger from official repository
-            display_info "Cloning ranger from official repository..."
+            # Install ranger from official repository
+            display_info "Installing ranger from official repository..."
             git clone https://github.com/ranger/ranger.git /tmp/ranger
             cd /tmp/ranger || exit 1
-
-            display_info "Installing ranger..."
-            sudo python3 setup.py install
+            sudo make install
 
             if [ $? -ne 0 ]; then
                 display_error "Failed to install ranger. Please install it manually from https://github.com/ranger/ranger"
@@ -472,15 +457,15 @@ edit_container_files() {
     echo ""
     echo -e "${YELLOW}Instructions:${NC}"
     echo "1. Use arrow keys to navigate files and directories"
-    echo "2. Press 'Enter' to open files or directories"
-    echo "3. Press 'i' to edit files (will open in default editor)"
-    echo "4. Press 'm' to create new files or directories"
-    echo "5. Press 'dd' to delete files or directories"
-    echo "6. Press 'q' to quit ranger"
+    echo "2. Press [Enter] to open files or directories"
+    echo "3. Press [i] to edit files (will open in default editor)"
+    echo "4. Press [m] to create new files or directories"
+    echo "5. Press [dd] to delete files or directories"
+    echo "6. Press [q] to quit ranger"
     echo ""
     echo -e "${BLUE}You are now in the container directory: $container_dir${NC}"
-    echo -e "${YELLOW}Press any key to start ranger...${NC}"
-    read -n 1 -s
+    echo -e "${YELLOW}Press [Enter] to start ranger...${NC}"
+    read -r
 
     # Launch ranger in the container directory
     ranger "$container_dir"
