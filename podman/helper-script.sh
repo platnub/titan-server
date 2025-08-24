@@ -110,22 +110,23 @@ while true; do
             ;;
         3)
             read -p "Enter the container name to run: " container_name
-            stop_container
+            stop_container "$container_name"
             ;;
         4)
             read -p "Enter the container name to run: " container_name
-            create_container
+            create_container "$container_name"
             ;;
         5)
             read -p "Enter the container name to run: " container_name
-            reapply_permissions
+            reapply_permissions "$container_name"
             ;;
         6)
             echo "Exiting..."
             exit 0
             ;;
         99)
-            remove_container
+            read -p "Enter the container name to run: " container_name
+            remove_container "$container_name"
             ;;
         *)
             echo "Invalid choice. Please enter a number between 1 and 6."
