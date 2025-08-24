@@ -261,34 +261,64 @@ create_container() {
 # Apply user permissions (excluding appdata contents)
 reapply_permissions() {
     local container_name=$1
+    local container_path="$base_dir/$container_name"
 
     display_info "Applying permissions to container $container_name..."
 
     # Set directory permissions (excluding appdata contents)
-    sudo chmod 700 "$base_dir/$container_name"
-    sudo chmod 700 "$base_dir/$container_name/logs"
-    sudo chmod 400 "$base_dir/$container_name/secrets"
-    sudo chmod 400 "$base_dir/$container_name/compose.yaml"
-    sudo chmod 400 "$base_dir/$container_name/.env"
+    sudo chmod 700 "$container_path" || {
+        display_error "Failed to set permissions for $container_path"
+        return 1
+    }
+
+    sudo chmod 700 "$container_path/logs" || {
+        display_error "Failed to set permissions for $container_path/logs"
+        return 1
+    }
+
+    sudo chmod 400 "$container_path/secrets" || {
+        display_error "Failed to set permissions for $container_path/secrets"
+        return 1
+    }
+
+    sudo chmod 400 "$container_path/compose.yaml" || {
+        display_error "Failed to set permissions for $container_path/compose.yaml"
+        return 1
+    }
+
+    sudo chmod 400 "$container_path/.env" || {
+        display_error "Failed to set permissions for $container_path/.env"
+        return 1
+    }
 
     # Change ownership to podman user (excluding appdata contents)
     # First set ownership for all files except appdata
-    find "$base_dir/$container_name" -mindepth 1 -maxdepth 1 ! -name "appdata" -exec sudo chown podman:podman {} +
+    find "$container_path" -mindepth 1 -maxdepth 1 ! -name "appdata" -exec sudo chown podman:podman {} + || {
+        display_error "Failed to set ownership for container files"
+        return 1
+    }
 
     # Then set ownership for the appdata directory itself (not its contents)
-    sudo chown podman:podman "$base_dir/$container_name/appdata"
+    sudo chown podman:podman "$container_path/appdata" || {
+        display_error "Failed to set ownership for appdata directory"
+        return 1
+    }
 
     # Load rootless_user if it exists
-    if [ -f "$base_dir/$container_name/.env" ]; then
+    if [ -f "$container_path/.env" ]; then
         load_rootless_user "$container_name"
         if [ -n "$rootless_user" ]; then
             # Use podman unshare to change ownership inside the container's user namespace
             # Only for appdata contents, not the directory itself
-            podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"
+            podman unshare chown -R "$rootless_user:$rootless_user" "$container_path/appdata/" || {
+                display_error "Failed to set rootless user ownership for appdata contents"
+                return 1
+            }
         fi
     fi
 
     display_success "Permissions applied successfully."
+    return 0
 }
 
 # Load rootless_user from .env
