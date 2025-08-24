@@ -270,7 +270,6 @@ create_container() {
 reapply_permissions() {
     local container_name=$1
     local container_dir="$base_dir/$container_name"
-
     display_info "Applying permissions to container $container_name..."
 
     # Set directory permissions (excluding appdata contents)
@@ -293,18 +292,14 @@ reapply_permissions() {
     if [ -f "$container_dir/.env" ]; then
         load_rootless_user "$container_name"
         if [ -n "$rootless_user" ]; then
-            # Use podman unshare to change ownership inside the container's user namespace
-            # Only apply to contents of appdata directory
-            if [ -d "$container_dir/appdata" ]; then
-                # First find all items in appdata with sudo
-                while IFS= read -r -d '' item; do
-                    # Skip if the item is a mount point from the container
-                    if ! podman inspect "$container_name" | grep -q "$item"; then
-                        # Then apply rootless_user ownership with podman unshare
-                        podman unshare chown -R "$rootless_user:$rootless_user" "$item" 2>/dev/null || true
-                    fi
-                done < <(sudo find "$container_dir/appdata" -mindepth 1 -print0)
-            fi
+            # Apply permissions to appdata directory itself (not contents)
+            sudo chmod 700 "$container_dir/appdata"
+
+            # Use podman unshare to change ownership of appdata directory itself
+            podman unshare chown "$rootless_user:$rootless_user" "$container_dir/appdata"
+
+            # If there are any existing files/directories in appdata, we should preserve their permissions
+            # but we won't modify them recursively as requested
         fi
     fi
 
