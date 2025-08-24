@@ -55,8 +55,8 @@ create_container() {
     echo "Container $container_name created successfully with user."
 
     # Ask to run the container
-    read -p "Do you want to run the container now? (y/n): " run_now
-    if [[ "$run_now" =~ ^[Yy]$ ]]; then
+    read -p "Do you want to run the container now? (y/n): " create_run_container
+    if [[ "$create_run_container" =~ ^[Yy]$ ]]; then
         run_container "$container_name"
     fi
 }
@@ -79,7 +79,16 @@ create_container() {
         read -p "Enter the container name to remove: " container_name
     #    stop_container $container_name
         podman rm "$container_name"
-        sudo rm -rf "$base_dir/$container_name"
+        # Ask to remove ALL container data
+        read -p "Do you want to remove ALL container data from $container_name? (y/n): " remove_container_data
+        if [[ "$remove_container_data" =~ ^[Yy]$ ]]; then
+            read -p "!! Are you sure you want to remove ALL container data from $container_name? !! (y/n): " remove_container_data_sure
+            if [[ "$remove_container_data_sure" =~ ^[Yy]$ ]]; then
+            sudo rm -rf "$base_dir/$container_name"
+            echo "ALL container data removed from $container_name."
+            fi
+        echo "ALL container data removed from $container_name."
+        fi
         echo "Container $container_name removed successfully."
 }
 
