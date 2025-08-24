@@ -11,7 +11,7 @@ list_containers() {
 run_container() {
     local container_name=$1
     reapply_permissions "$container_name"
-    podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
+    podman start $container_name
     update_rootless_user "$container_name"
     echo "Container $container_name started successfully."
 }
@@ -20,8 +20,19 @@ run_container() {
 stop_container() {
     local container_name=$1
     update_rootless_user "$container_name"
-    podman-compose --file "$base_dir/$container_name/compose.yaml" down
+    podman stop $container_name
     echo "Container $container_name stopped successfully."
+}
+
+# Function to recompose a container (stop and then run)
+recompose_container() {
+    local container_name=$1
+    echo "Recomposing container $container_name..."
+    update_rootless_user "$container_name"
+    podman-compose --file "$base_dir/$container_name/compose.yaml" down
+    reapply_permissions "$container_name"
+    podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
+    echo "Container $container_name recomposed successfully."
 }
 
 # Function to create a new container
