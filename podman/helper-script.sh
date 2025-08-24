@@ -109,15 +109,15 @@ while true; do
         4)
             create_container
             ;;
-        4)
+        5)
             reapply_permissions
-            ;;
-        99)
-            remove_container
             ;;
         6)
             echo "Exiting..."
             exit 0
+            ;;
+        99)
+            remove_container
             ;;
         *)
             echo "Invalid choice. Please enter a number between 1 and 6."
