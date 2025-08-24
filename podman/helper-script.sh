@@ -66,7 +66,7 @@ create_container() {
     sudo chmod 400 "$base_dir/$container_name/secrets"
     sudo chmod 400 "$base_dir/$container_name/compose.yaml"
     sudo chmod 400 "$base_dir/$container_name/.env"
-    sudo chown podman:podman "$base_dir/$container_name"
+    ( cd "$base_dir/$container_name" && sudo chown podman:podman * )
     echo "Permissions applied succesfully."
 }
 
