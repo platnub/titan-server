@@ -31,13 +31,13 @@ create_container() {
     ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
     # Apply user permissions
- #   chmod 775 "$base_dir/$container_name"
- #   chmod 775 "$base_dir/$container_name/appdata"
- #   chmod 775 "$base_dir/$container_name/logs"
- #   chmod 600 "$base_dir/$container_name/secrets"
- #   chmod 600 "$base_dir/$container_name/.env"
- #   chown -R "$container_name" "$base_dir/$container_name"
- #   podman unshare chown -R root:1000 "$base_dir/$container_name"
+    chmod 700 "$base_dir/$container_name"
+    chmod 700 "$base_dir/$container_name/appdata"
+    chmod 700 "$base_dir/$container_name/logs"
+    chmod 400 "$base_dir/$container_name/secrets"
+    chmod 400 "$base_dir/$container_name/.env"
+    chown -R podman:podman "$base_dir/$container_name"
+    podman unshare chown -R 1000:1000 "$base_dir/$container_name"
     
     echo "Container $container_name created successfully with user."
 
