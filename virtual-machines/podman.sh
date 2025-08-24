@@ -423,10 +423,10 @@ function start_script() {
     echo -e "${ADVANCED}${BOLD}${RD}Using Advanced Settings${CL}"
     advanced_settings
   fi
-  # Sudo password
-  if SUDO_PASSWORD=$(whiptail --backtitle "Proxmox VE Helper Scripts" --passwordbox "Set Sudo Password" 8 58 --title "SUDO PASSWORD" --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
-    if [ -z $SUDO_PASSWORD ]; then
-      msg_error "Sudo password cannot be empty."
+  # Sudo 
+  if SUDO_=$(whiptail --backtitle "Proxmox VE Helper Scripts" --box "Set Sudo " 8 58 --title "SUDO " --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
+    if [ -z $SUDO_ ]; then
+      msg_error "Sudo  cannot be empty."
       exit-script
     fi
   else
@@ -509,8 +509,8 @@ msg_info "Creating Podman user and locking root user"
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo adduser podman sudo" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo usermod -aG sudo podman" >/dev/null &&
-#  virt-customize -q -a "${FILE}"  --password-crypto sha512 --password podman:${SUDO_PASSWORD}
-  virt-customize -q -a "${FILE}" --run-command "echo 'podman:${SUDO_PASSWORD}' | sudo chpasswd" >/dev/null &&
+  virt-customize -q -a "${FILE}" --password podman:password:${SUDO_PASSWORD}
+#  virt-customize -q -a "${FILE}" --run-command "echo 'podman:${SUDO_PASSWORD}' | sudo chpasswd" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo passwd -l root" >/dev/null &&
 msg_ok "Podman user created and root user locked"
 msg_info "Installing & configuring Podman & Installing podman-compose"
