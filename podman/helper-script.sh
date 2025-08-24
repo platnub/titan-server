@@ -78,13 +78,11 @@ list_containers() {
 # Function to wait for container to be fully running
 wait_for_container_running() {
     local container_name=$1
-    local max_attempts=60
+    local max_attempts=120  # Increased from 60 to 120 attempts
     local attempt=0
     local status
     local health_status
-
     display_info "Waiting for container $container_name to be fully running..."
-
     while [ $attempt -lt $max_attempts ]; do
         # Get container status
         status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
@@ -94,8 +92,13 @@ wait_for_container_running() {
             if [ -n "$health_status" ] && [ "$health_status" != "healthy" ]; then
                 display_info "Container $container_name is running but health check is $health_status..."
             else
-                display_success "Container $container_name is running and healthy."
-                return 0
+                # Additional check: Ensure the container is fully initialized
+                if podman exec "$container_name" test -f /tmp/container_initialized; then
+                    display_success "Container $container_name is running, healthy, and fully initialized."
+                    return 0
+                else
+                    display_info "Container $container_name is running but not yet fully initialized..."
+                fi
             fi
         elif [ "$status" = "exited" ] || [ "$status" = "dead" ]; then
             display_error "Container $container_name is in $status state."
@@ -109,9 +112,8 @@ wait_for_container_running() {
             return 1
         fi
         attempt=$((attempt + 1))
-        sleep 2
+        sleep 5  # Increased from 2 to 5 seconds
     done
-
     display_error "Timeout waiting for container $container_name to start."
     display_info "Current status: $status"
     echo "Container logs:"
