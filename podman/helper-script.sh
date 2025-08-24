@@ -10,16 +10,16 @@ list_containers() {
 # Function to run a container
 run_container() {
     local container_name=$1
-    reapply_permissions "$container_name"
+    reapply_permissions $base_dir $container_name
     podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
-    update_rootless_user "$container_name"
+    update_rootless_user $base_dir $container_name
     echo "Container $container_name started successfully."
 }
 
 # Function to stop a container
 stop_container() {
     local container_name=$1
-    update_rootless_user "$container_name"
+    update_rootless_user $base_dir $container_name
     podman-compose --file "$base_dir/$container_name/compose.yaml" down
     echo "Container $container_name stopped successfully."
 }
@@ -41,7 +41,7 @@ create_container() {
     sudo sh -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
-    reapply_permissions "$container_name"
+    reapply_permissions $base_dir $container_name
     echo "Container $container_name created successfully."
 
     # Ask to run the container
