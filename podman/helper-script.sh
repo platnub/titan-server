@@ -50,14 +50,14 @@ create_container() {
 # Function to run a container
 run_container() {
     local container_name=$1
-    podman compose --file "$base_dir/$container_name/compose.yaml" up --detach
+    podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
     echo "Container $container_name started successfully."
 }
 
 # Function to stop a container
 stop_container() {
     read -p "Enter the container name to stop: " container_name
-    podman compose --file "$base_dir/$container_name/compose.yaml" down
+    podman-compose --file "$base_dir/$container_name/compose.yaml" down
     echo "Container $container_name stopped successfully."
 }
 
