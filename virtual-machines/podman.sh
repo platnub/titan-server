@@ -514,12 +514,13 @@ msg_info "Installing & configuring Podman & Installing podman-compose"
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl enable podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "apt-get install -y podman-compose" >/dev/null &&
-# Makes Podman containers run rootless
   virt-customize -q -a "${FILE}" --mkdir "/home/podman/containers" >/dev/null &&
-#  virt-customize -q -a "${FILE}" --run-command "mkdir -p /home/podman/containers" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "echo 'rootless = true' > /home/podman/containers/containers.conf" >/dev/null &&
-# Add docker.io as a registry
+# Makes Podman containers run rootless
   virt-customize -q -a "${FILE}" --mkdir "/home/podman/.config/containers" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e '[containers]\nrootless = true\nuserns = \"nomap\"' > /home/podman/.config/containers/containers.conf\"" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo usermod --add-subuids 10000-75535 podman" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo usermod --add-subgids 10000-75535 podman" >/dev/null
+# Add docker.io as a registry
   virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
   virt-customize -q -a "${FILE}" --firstboot-command "sudo loginctl enable-linger podman" >/dev/null
