@@ -37,7 +37,7 @@ create_container() {
     sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
 
     # Create .env file
-    sudo /bin/su -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
+    sudo sh -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
     reapply_permissions "$container_name"
@@ -53,15 +53,6 @@ create_container() {
 # Apply user permissions
 reapply_permissions() {
     local container_name=$1
-
-    sudo chmod 700 "$base_dir/$container_name"
-    sudo chmod 700 "$base_dir/$container_name/appdata"
-    sudo chmod 700 "$base_dir/$container_name/logs"
-    sudo chmod 400 "$base_dir/$container_name/secrets"
-    sudo chmod 400 "$base_dir/$container_name/compose.yaml"
-    sudo chmod 400 "$base_dir/$container_name/.env"
-
-    ( cd "$base_dir/$container_name" && sudo chown podman:podman * )
 
     # Load rootless_user if it exists
     if [ -f "$base_dir/$container_name/.env" ]; then
@@ -86,7 +77,7 @@ load_rootless_user() {
 
     # Get the line rootless_user=...
     local line
-    line=$(grep -m1 -E '^[[:space:]]*rootless_user[[:space:]]*=' "$env_file") || {
+    line=$(sudo grep -m1 -E '^[[:space:]]*rootless_user[[:space:]]*=' "$env_file") || {
         echo "rootless_user not found in $env_file" >&2
         return 1
     }
@@ -120,16 +111,27 @@ update_rootless_user() {
         return 1
     fi
 
-    if [ -e "$env_file" ] && grep -qE '^[[:space:]]*rootless_user=' "$env_file"; then
-        # Update existing key
-        sed -i -E "s|^[[:space:]]*rootless_user=.*|rootless_user=$podman_huser|" "$env_file"
-    else
-        # Create or append the key
-        if [ -e "$env_file" ]; then
-            printf '\nrootless_user=%s\n' "$podman_huser" >> "$env_file"
-        else
-            printf 'rootless_user=%s\n' "$podman_huser" > "$env_file"
+    if [ -e "$env_file" ]; then
+        # Check if file is writable, if not make it writable temporarily
+        if [ ! -w "$env_file" ]; then
+            sudo chmod u+w "$env_file"
         fi
+
+        if grep -qE '^[[:space:]]*rootless_user=' "$env_file"; then
+            # Update existing key
+            sudo sed -i -E "s|^[[:space:]]*rootless_user=.*|rootless_user=$podman_huser|" "$env_file"
+        else
+            # Append the key
+            sudo sh -c "printf '\nrootless_user=%s\n' '$podman_huser' >> '$env_file'"
+        fi
+
+        # Restore original permissions if we changed them
+        if [ ! -w "$env_file" ]; then
+            sudo chmod u-w "$env_file"
+        fi
+    else
+        # Create new file with the key
+        sudo sh -c "printf 'rootless_user=%s\n' '$podman_huser' > '$env_file'"
     fi
 
     echo "Updated rootless_user in .env"
