@@ -272,7 +272,10 @@ reapply_permissions() {
     sudo chmod 400 "$base_dir/$container_name/.env"
 
     # Change ownership to podman user (excluding appdata contents)
-    sudo chown -R podman:podman "$base_dir/$container_name"
+    # First set ownership for all files except appdata
+    find "$base_dir/$container_name" -mindepth 1 -maxdepth 1 ! -name "appdata" -exec sudo chown podman:podman {} +
+
+    # Then set ownership for the appdata directory itself (not its contents)
     sudo chown podman:podman "$base_dir/$container_name/appdata"
 
     # Load rootless_user if it exists
@@ -280,6 +283,7 @@ reapply_permissions() {
         load_rootless_user "$container_name"
         if [ -n "$rootless_user" ]; then
             # Use podman unshare to change ownership inside the container's user namespace
+            # Only for appdata contents, not the directory itself
             podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"
         fi
     fi
