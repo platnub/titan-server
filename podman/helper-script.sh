@@ -234,17 +234,6 @@ decompose_container() {
     display_header
     info_msg "Decomposing container: $container_name"
 
-    # Check if container exists
-    if container_exists "$container_name"; then
-        # Stop the container first
-        if ! stop_container "$container_name"; then
-            error_msg "Failed to stop container $container_name before decomposing."
-            result=1
-        fi
-    else
-        info_msg "Container $container_name does not exist, skipping stop."
-    fi
-
     # Check if container directory exists
     if ! container_dir_exists "$container_name"; then
         error_msg "Container directory $base_dir/$container_name does not exist."
@@ -255,6 +244,17 @@ decompose_container() {
     if [ ! -f "$base_dir/$container_name/compose.yaml" ]; then
         error_msg "compose.yaml file not found in $base_dir/$container_name"
         return 1
+    fi
+
+    # Check if container exists
+    if container_exists "$container_name"; then
+        # Stop the container first
+        if ! stop_container "$container_name"; then
+            error_msg "Failed to stop container $container_name before decomposing."
+            result=1
+        fi
+    else
+        info_msg "Container $container_name does not exist, skipping stop."
     fi
 
     # Use sudo to run podman-compose with the compose file
@@ -286,12 +286,21 @@ compose_container() {
         return 1
     fi
 
-    update_rootless_user "$container_name"
+    # Apply permissions before composing
     reapply_permissions "$container_name"
 
     # Use sudo to run podman-compose with the compose file
     if sudo podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach; then
         success_msg "Container $container_name composed successfully."
+
+        # Update rootless user after successful composition
+        update_rootless_user "$container_name"
+
+        # Wait for container to be running
+        if ! wait_for_container_running "$container_name"; then
+            error_msg "Container $container_name did not start properly after composition."
+            result=1
+        fi
     else
         error_msg "Failed to compose container $container_name."
         result=1
@@ -437,18 +446,31 @@ reapply_permissions() {
         error_msg "Failed to set permissions for secrets directory"
         result=1
     fi
-    if sudo chmod 400 "$base_dir/$container_name/compose.yaml"; then
-        success_msg "Set permissions for compose.yaml"
+
+    # Check if compose.yaml exists before setting permissions
+    if [ -f "$base_dir/$container_name/compose.yaml" ]; then
+        if sudo chmod 400 "$base_dir/$container_name/compose.yaml"; then
+            success_msg "Set permissions for compose.yaml"
+        else
+            error_msg "Failed to set permissions for compose.yaml"
+            result=1
+        fi
     else
-        error_msg "Failed to set permissions for compose.yaml"
-        result=1
+        warning_msg "compose.yaml not found, skipping permission setting"
     fi
-    if sudo chmod 400 "$base_dir/$container_name/.env"; then
-        success_msg "Set permissions for .env file"
+
+    # Check if .env exists before setting permissions
+    if [ -f "$base_dir/$container_name/.env" ]; then
+        if sudo chmod 400 "$base_dir/$container_name/.env"; then
+            success_msg "Set permissions for .env file"
+        else
+            error_msg "Failed to set permissions for .env file"
+            result=1
+        fi
     else
-        error_msg "Failed to set permissions for .env file"
-        result=1
+        warning_msg ".env not found, skipping permission setting"
     fi
+
     # Change ownership to podman user
     if sudo chown -R podman:podman "$base_dir/$container_name"; then
         success_msg "Changed ownership to podman user"
@@ -456,6 +478,7 @@ reapply_permissions() {
         error_msg "Failed to change ownership to podman user"
         result=1
     fi
+
     # Load rootless_user if it exists
     if [ -f "$base_dir/$container_name/.env" ]; then
         if load_rootless_user "$container_name"; then
@@ -472,6 +495,7 @@ reapply_permissions() {
             result=1
         fi
     fi
+
     if [ $result -eq 0 ]; then
         success_msg "Permissions applied successfully."
     else
@@ -484,25 +508,36 @@ load_rootless_user() {
     local container_name=$1
     local env_file="$base_dir/$container_name/.env"
     local result=0
+
+    # Check if .env file exists
+    if [ ! -f "$env_file" ]; then
+        error_msg "$env_file does not exist"
+        return 1
+    fi
+
     if [[ ! -r "$env_file" ]]; then
         error_msg "Cannot read $env_file"
         return 1
     fi
+
     # Get the line rootless_user=...
     local line
     line=$(sudo grep -m1 -E '^[[:space:]]*rootless_user[[:space:]]*=' "$env_file") || {
         error_msg "rootless_user not found in $env_file"
         return 1
     }
+
     # Extract value, strip inline comments/whitespace and surrounding quotes
     local val=${line#*=}
     val=${val%%#*}
     val=$(printf '%s\n' "$val" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
     val=$(printf '%s\n' "$val" | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/")
+
     if [[ -z "$val" ]]; then
         error_msg "rootless_user value is empty in $env_file"
         return 1
     fi
+
     rootless_user="$val"
     export rootless_user
     success_msg "Loaded rootless_user: $rootless_user"
@@ -533,6 +568,7 @@ update_rootless_user() {
         if [ ! -w "$env_file" ]; then
             sudo chmod u+w "$env_file"
         fi
+
         if grep -qE '^[[:space:]]*rootless_user=' "$env_file"; then
             # Update existing key
             if sudo sed -i -E "s|^[[:space:]]*rootless_user=.*|rootless_user=$podman_huser|" "$env_file"; then
@@ -550,6 +586,7 @@ update_rootless_user() {
                 result=1
             fi
         fi
+
         # Restore original permissions if we changed them
         if [ ! -w "$env_file" ]; then
             sudo chmod u-w "$env_file"
