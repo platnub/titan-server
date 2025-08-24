@@ -6,12 +6,14 @@ list_containers() {
     echo "Listing all Podman containers:"
     podman ps -a
 }
+
 # Function to wait for container to be fully running
 wait_for_container_running() {
     local container_name=$1
-    local max_attempts=30
+    local max_attempts=60  # Increased timeout
     local attempt=0
     local status
+    local health_status
 
     echo "Waiting for container $container_name to be fully running..."
 
@@ -20,12 +22,28 @@ wait_for_container_running() {
         status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
 
         if [ "$status" = "running" ]; then
-            # Check if the container is actually ready (optional: add more checks here)
-            # For example, you could check if a specific port is listening or a process is running
-            echo "Container $container_name is running."
-            return 0
+            # Check if the container has a health check
+            health_status=$(podman inspect -f '{{.State.Health.Status}}' "$container_name" 2>/dev/null)
+
+            if [ -n "$health_status" ] && [ "$health_status" != "healthy" ]; then
+                # If there's a health check but it's not healthy yet
+                echo "Container $container_name is running but health check is $health_status..."
+            else
+                # Either no health check or it's healthy
+                echo "Container $container_name is running and healthy."
+                return 0
+            fi
         elif [ "$status" = "exited" ] || [ "$status" = "dead" ]; then
             echo "Container $container_name is in $status state."
+
+            # Get exit code for more detailed error
+            exit_code=$(podman inspect -f '{{.State.ExitCode}}' "$container_name" 2>/dev/null)
+            if [ -n "$exit_code" ] && [ "$exit_code" -ne 0 ]; then
+                echo "Container exited with code $exit_code"
+                echo "Container logs:"
+                podman logs "$container_name" 2>&1
+            fi
+
             return 1
         fi
 
@@ -34,6 +52,9 @@ wait_for_container_running() {
     done
 
     echo "Timeout waiting for container $container_name to start."
+    echo "Current status: $status"
+    echo "Container logs:"
+    podman logs "$container_name" 2>&1
     return 1
 }
 
@@ -54,7 +75,15 @@ start_container() {
         echo "Container logs:"
         podman logs "$container_name" 2>&1
 
-        return 1
+        # Try to restart the container if it failed
+        echo "Attempting to restart container $container_name..."
+        podman restart "$container_name"
+
+        # Wait again
+        if ! wait_for_container_running "$container_name"; then
+            echo "Error: Container $container_name failed to start after restart."
+            return 1
+        fi
     fi
 
     update_rootless_user "$container_name"
