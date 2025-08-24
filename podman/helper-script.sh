@@ -11,37 +11,19 @@ list_containers() {
 start_container() {
     local container_name=$1
     reapply_permissions "$container_name"
-    podman start $container_name
+
+    # Start the container
+    echo "Starting container $container_name..."
+    podman start "$container_name"
 
     # Wait for the container to be fully running
-    echo "Waiting for container $container_name to be fully running..."
-    local max_attempts=30
-    local attempt=0
-    local container_running=false
-
-    while [ $attempt -lt $max_attempts ]; do
-        # Check container status
-        local container_status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
-
-        if [ "$container_status" = "running" ]; then
-            # Additional check to ensure the container is ready
-            if podman exec "$container_name" test -e /proc/1 2>/dev/null; then
-                container_running=true
-                break
-            fi
-        fi
-
-        attempt=$((attempt + 1))
-        sleep 2
-    done
-
-    if [ "$container_running" = true ]; then
-        update_rootless_user "$container_name"
-        echo "Container $container_name started successfully."
-    else
-        echo "Error: Container $container_name did not start properly after $max_attempts attempts."
+    if ! wait_for_container_running "$container_name"; then
+        echo "Error: Container $container_name did not start properly."
         return 1
     fi
+
+    update_rootless_user "$container_name"
+    echo "Container $container_name started successfully."
 }
 
 # Function to stop a container
