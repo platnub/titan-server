@@ -101,10 +101,45 @@ stop_container() {
     echo "Container $container_name stopped successfully."
 }
 
+# Function to create new folders in appdata
+create_appdata_folders() {
+    local container_name=$1
+    local appdata_dir="$base_dir/$container_name/appdata"
+
+    echo "Checking for new folders to create in $appdata_dir..."
+
+    while true; do
+        read -p "Enter a folder name to create in appdata (leave empty to finish): " folder_name
+
+        if [[ -z "$folder_name" ]]; then
+            break
+        fi
+
+        # Create the folder
+        sudo mkdir -p "$appdata_dir/$folder_name"
+        echo "Created folder: $appdata_dir/$folder_name"
+
+        # Apply permissions
+        sudo chmod 700 "$appdata_dir/$folder_name"
+
+        # If rootless_user is set, apply it
+        if [ -n "$rootless_user" ]; then
+            podman unshare chown "$rootless_user:$rootless_user" "$appdata_dir/$folder_name"
+        fi
+    done
+}
+
 # Function to recompose a container (stop and then run)
 recompose_container() {
     local container_name=$1
     echo "Recomposing container $container_name..."
+
+    # Ask to create new folders in appdata
+    read -p "Do you want to create any new folders in the appdata directory? (y/n): " create_folders
+    if [[ "$create_folders" =~ ^[Yy]$ ]]; then
+        create_appdata_folders "$container_name"
+    fi
+
     update_rootless_user "$container_name"
     podman-compose --file "$base_dir/$container_name/compose.yaml" down
     reapply_permissions "$container_name"
@@ -128,6 +163,12 @@ create_container() {
     # Create .env file
     sudo sh -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
+
+    # Ask to create new folders in appdata
+    read -p "Do you want to create any new folders in the appdata directory? (y/n): " create_folders
+    if [[ "$create_folders" =~ ^[Yy]$ ]]; then
+        create_appdata_folders "$container_name"
+    fi
 
     reapply_permissions "$container_name"
     echo "Container $container_name created successfully."
