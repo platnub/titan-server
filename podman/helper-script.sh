@@ -16,14 +16,12 @@ run_container() {
 
 # Function to stop a container
 stop_container() {
-    read -p "Enter the container name to stop: " container_name
     podman-compose --file "$base_dir/$container_name/compose.yaml" down
     echo "Container $container_name stopped successfully."
 }
 
 # Function to create a new container
 create_container() {
-    read -p "Enter the container name: " container_name
 #    read -p "Enter the user ID (UID) to use: " user_id
 
     # Create a non-login system user with the given UID
@@ -55,7 +53,6 @@ create_container() {
     echo "Container $container_name created successfully with user."
 
     # Ask to run the container
-    read -p "Do you want to run the container now? (y/n): " create_run_container
     if [[ "$create_run_container" =~ ^[Yy]$ ]]; then
         run_container "$container_name"
     fi
@@ -76,7 +73,6 @@ create_container() {
 
     # Function to remove a container
     remove_container() {
-        read -p "Enter the container name to remove: " container_name
     #    stop_container $container_name
         podman rm "$container_name"
         # Ask to remove ALL container data
@@ -113,12 +109,15 @@ while true; do
             run_container "$container_name"
             ;;
         3)
+            read -p "Enter the container name to run: " container_name
             stop_container
             ;;
         4)
+            read -p "Enter the container name to run: " container_name
             create_container
             ;;
         5)
+            read -p "Enter the container name to run: " container_name
             reapply_permissions
             ;;
         6)
