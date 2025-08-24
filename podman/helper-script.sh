@@ -11,11 +11,13 @@ list_containers() {
 run_container() {
     local container_name=$1
     podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
+    update_rootless_user
     echo "Container $container_name started successfully."
 }
 
 # Function to stop a container
 stop_container() {
+    update_rootless_user
     podman-compose --file "$base_dir/$container_name/compose.yaml" down
     echo "Container $container_name stopped successfully."
 }
@@ -67,10 +69,75 @@ create_container() {
     sudo chmod 400 "$base_dir/$container_name/compose.yaml"
     sudo chmod 400 "$base_dir/$container_name/.env"
     ( cd "$base_dir/$container_name" && sudo chown podman:podman * )
-    podman_huser=$(podman top "$container_name" user huser | awk 'NR>1 && $1=="abc" {print $2; exit}')
-    podman unshare chown -R $podman_huser:$podman_huser "$base_dir/$container_name/appdata/"
+
+#Load $rootless_user
+load_rootless_user() {
+  local env_file="$base_dir/$container_name/.env"
+  if [[ ! -r "$env_file" ]]; then
+    echo "Cannot read $env_file" >&2
+    return 1
+  fi
+  
+  # Get the line rootless_user=...
+  local line
+  line=$(grep -m1 -E '^[[:space:]]*rootless_user[[:space:]]*=' "$env_file") || {
+    echo "rootless_user not found in $env_file" >&2
+    return 1
+  }
+
+  # Extract value, strip inline comments/whitespace and surrounding quotes
+  local val=${line#*=}
+  val=${val%%#*}
+  val=$(printf '%s\n' "$val" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  val=$(printf '%s\n' "$val" | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/")
+
+  if [[ -z "$val" ]]; then
+    echo "rootless_user value is empty in $env_file" >&2
+    return 1
+  fi
+
+  rootless_user="$val"
+  export rootless_user   # drop this if you don’t want it exported
+}
+    
+    podman unshare chown -R $rootless_user:$rootless_user "$base_dir/$container_name/appdata/"
     echo "Permissions applied succesfully."
 }
+
+    #Function to update rootless_user in .env
+update_rootless_user() {
+  local env_file="$base_dir/$container_name/.env"
+
+  # Get HUSER for user "abc"
+  local podman_huser
+  podman_huser=$(podman top "$container_name" user huser 2>/dev/null | awk 'NR>1 && $1=="abc" {print $2; exit}')
+
+  if [ -z "$podman_huser" ]; then
+    echo "Could not determine HUSER for user 'abc' in container '$container_name'. Is it running and does user exist?"
+    return 1
+  fi
+
+  # If .env exists but is read-only, temporarily make it writable
+#  local was_readonly=0
+#  if [ -e "$env_file" ] && [ ! -w "$env_file" ]; then
+#    chmod u+w "$env_file" 2>/dev/null || sudo chmod u+w "$env_file"
+#    was_readonly=1
+#  fi
+
+  if [ -e "$env_file" ] && grep -qE '^[[:space:]]*rootless_user=' "$env_file"; then
+    # Update existing key
+    sed -i -E "s|^[[:space:]]*rootless_user=.*|rootless_user=$podman_huser|" "$env_file"
+  else
+    # Create or append the key
+    if [ -e "$env_file" ]; then
+      printf '\nrootless_user=%s\n' "$podman_huser" >> "$env_file"
+    else
+      printf 'rootless_user=%s\n' "$podman_huser" > "$env_file"
+    fi
+  fi
+
+  echo "Updated rootless_user in .env"
+  }
 
     # Function to remove a container
     remove_container() {
