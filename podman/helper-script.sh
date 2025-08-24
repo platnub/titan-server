@@ -385,6 +385,58 @@ recompose_container() {
     return $result
 }
 
+# Function to install Ranger if not available
+install_ranger() {
+    info_msg "Checking if Ranger file manager is installed..."
+
+    if command -v ranger &> /dev/null; then
+        success_msg "Ranger is already installed."
+        return 0
+    fi
+
+    warning_msg "Ranger file manager is not installed. Attempting to install..."
+
+    # Detect package manager and install Ranger
+    if command -v apt-get &> /dev/null; then
+        # Debian/Ubuntu
+        if sudo apt-get update && sudo apt-get install -y ranger; then
+            success_msg "Ranger installed successfully."
+            return 0
+        else
+            error_msg "Failed to install Ranger using apt-get."
+        fi
+    elif command -v dnf &> /dev/null; then
+        # Fedora
+        if sudo dnf install -y ranger; then
+            success_msg "Ranger installed successfully."
+            return 0
+        else
+            error_msg "Failed to install Ranger using dnf."
+        fi
+    elif command -v yum &> /dev/null; then
+        # CentOS/RHEL
+        if sudo yum install -y ranger; then
+            success_msg "Ranger installed successfully."
+            return 0
+        else
+            error_msg "Failed to install Ranger using yum."
+        fi
+    elif command -v pacman &> /dev/null; then
+        # Arch Linux
+        if sudo pacman -S --noconfirm ranger; then
+            success_msg "Ranger installed successfully."
+            return 0
+        else
+            error_msg "Failed to install Ranger using pacman."
+        fi
+    else
+        error_msg "Could not detect package manager to install Ranger."
+        warning_msg "Please install Ranger manually for file management functionality."
+    fi
+
+    return 1
+}
+
 # Function to create a new container
 create_container() {
     local container_name=$1
@@ -447,7 +499,7 @@ create_container() {
     info_msg "Creating compose.yaml file..."
     sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
 
-    # Create .env file
+    # Create .env file - fixed the issue with -e at the start
     info_msg "Creating .env file..."
     sudo sh -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
@@ -760,11 +812,18 @@ edit_container_files() {
 
     info_msg "Editing files for container: $container_name"
 
-    # Check if ranger is available
+    # Check if ranger is available, install if not
     if ! command -v ranger &> /dev/null; then
-        error_msg "Ranger file manager is not installed. Please install it first."
-        warning_msg "You can install ranger with: sudo apt-get install ranger (Debian/Ubuntu) or sudo dnf install ranger (Fedora)"
-        return 1
+        warning_msg "Ranger file manager is not installed."
+        if confirm "Would you like to install Ranger now?"; then
+            if ! install_ranger; then
+                error_msg "Failed to install Ranger. Please install it manually."
+                return 1
+            fi
+        else
+            warning_msg "Cannot proceed without Ranger. Please install it manually."
+            return 1
+        fi
     fi
 
     # Check if sudo is available
