@@ -214,9 +214,9 @@ compose_container() {
     display_header
 
     display_info "Composing container $container_name..."
-    update_rootless_user "$container_name"
     reapply_permissions "$container_name"
     podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
+    update_rootless_user "$container_name"
     display_success "Container $container_name composed successfully."
     display_footer
 }
@@ -340,16 +340,10 @@ update_rootless_user() {
     local container_name=$1
     local env_file="$base_dir/$container_name/.env"
 
-    # Check if container is running before attempting to get user info
-    local status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
-    if [ "$status" != "running" ]; then
-        display_warning "Container $container_name is not running. Skipping rootless_user update."
-        return 1
-    fi
-
     # Get HUSER for user "abc"
     local podman_huser
     podman_huser=$(podman top "$container_name" user huser 2>/dev/null | awk 'NR>1 && $1=="abc" {print $2; exit}')
+
     if [ -z "$podman_huser" ]; then
         display_warning "Could not determine HUSER for user 'abc' in container '$container_name'. Is it running and does user exist?"
         return 1
@@ -360,6 +354,7 @@ update_rootless_user() {
         if [ ! -w "$env_file" ]; then
             sudo chmod u+w "$env_file"
         fi
+
         if grep -qE '^[[:space:]]*rootless_user=' "$env_file"; then
             # Update existing key
             sudo sed -i -E "s|^[[:space:]]*rootless_user=.*|rootless_user=$podman_huser|" "$env_file"
@@ -367,6 +362,7 @@ update_rootless_user() {
             # Append the key
             sudo sh -c "printf '\nrootless_user=%s\n' '$podman_huser' >> '$env_file'"
         fi
+
         # Restore original permissions if we changed them
         if [ ! -w "$env_file" ]; then
             sudo chmod u-w "$env_file"
@@ -375,6 +371,7 @@ update_rootless_user() {
         # Create new file with the key
         sudo sh -c "printf 'rootless_user=%s\n' '$podman_huser' > '$env_file'"
     fi
+
     display_success "Updated rootless_user in .env"
 }
 
