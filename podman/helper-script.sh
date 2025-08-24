@@ -3,7 +3,7 @@
 base_dir="/home/podman/containers"
 rootless_user=""
 
-# Function to display a message with color
+# Function to display a message with a specific color
 display_message() {
     local color=$1
     local message=$2
@@ -30,42 +30,34 @@ display_message() {
 display_error() {
     local message=$1
     display_message "red" "Error: $message"
-    exit 1
-}
-
-# Function to display a warning message
-display_warning() {
-    local message=$1
-    display_message "yellow" "Warning: $message"
+    read -p "Press Enter to continue..."
 }
 
 # Function to display a success message
 display_success() {
     local message=$1
     display_message "green" "Success: $message"
+    read -p "Press Enter to continue..."
+}
+
+# Function to display a warning message
+display_warning() {
+    local message=$1
+    display_message "yellow" "Warning: $message"
+    read -p "Press Enter to continue..."
 }
 
 # Function to display an info message
 display_info() {
     local message=$1
-    display_message "blue" "Info: $message"
-}
-
-# Function to confirm an action
-confirm_action() {
-    local message=$1
-    read -p "$message (y/n): " confirm
-    if [[ "$confirm" =~ ^[Yy]$ ]]; then
-        return 0
-    else
-        return 1
-    fi
+    display_message "blue" "$message"
 }
 
 # Function to list all containers
 list_containers() {
     display_info "Listing all Podman containers:"
     podman ps -a
+    read -p "Press Enter to continue..."
 }
 
 # Function to wait for container to be fully running
@@ -89,10 +81,10 @@ wait_for_container_running() {
                 return 0
             fi
         elif [ "$status" = "exited" ] || [ "$status" = "dead" ]; then
-            display_warning "Container $container_name is in $status state."
+            display_message "red" "Container $container_name is in $status state."
             exit_code=$(podman inspect -f '{{.State.ExitCode}}' "$container_name" 2>/dev/null)
             if [ -n "$exit_code" ] && [ "$exit_code" -ne 0 ]; then
-                display_warning "Container exited with code $exit_code"
+                display_message "red" "Container exited with code $exit_code"
                 display_info "Container logs:"
                 podman logs "$container_name" 2>&1
             fi
@@ -102,7 +94,7 @@ wait_for_container_running() {
         sleep 2
     done
 
-    display_error "Timeout waiting for container $container_name to start."
+    display_message "red" "Timeout waiting for container $container_name to start."
     display_info "Current status: $status"
     display_info "Container logs:"
     podman logs "$container_name" 2>&1
@@ -118,7 +110,7 @@ start_container() {
     podman start "$container_name"
 
     if ! wait_for_container_running "$container_name"; then
-        display_error "Container $container_name did not start properly."
+        display_message "red" "Error: Container $container_name did not start properly."
         display_info "Container logs:"
         podman logs "$container_name" 2>&1
         display_info "Attempting to restart container $container_name..."
@@ -189,14 +181,6 @@ compose_container() {
     display_success "Container $container_name composed successfully."
 }
 
-# Function to recompose a container
-recompose_container() {
-    local container_name=$1
-
-    decompose_container "$container_name"
-    compose_container "$container_name"
-}
-
 # Function to create a new container
 create_container() {
     local container_name=$1
@@ -210,14 +194,16 @@ create_container() {
     sudo sh -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
-    if confirm_action "Do you want to create any new folders in the appdata directory?"; then
+    read -p "Do you want to create any new folders in the appdata directory? (y/n): " create_folders
+    if [[ "$create_folders" =~ ^[Yy]$ ]]; then
         create_appdata_folders "$container_name"
     fi
 
     reapply_permissions "$container_name"
     display_success "Container $container_name created successfully."
 
-    if confirm_action "Do you want to compose the container now?"; then
+    read -p "Do you want to compose the container now? (y/n): " compose_now
+    if [[ "$compose_now" =~ ^[Yy]$ ]]; then
         compose_container "$container_name"
     fi
 }
@@ -316,8 +302,10 @@ remove_container() {
     podman rm "$container_name"
     decompose_container "$container_name"
 
-    if confirm_action "Do you want to remove ALL container data from $container_name?"; then
-        if confirm_action "!! Are you sure you want to remove ALL container data from $container_name? !!"); then
+    read -p "Do you want to remove ALL container data from $container_name? (y/n): " remove_container_data
+    if [[ "$remove_container_data" =~ ^[Yy]$ ]]; then
+        read -p "!! Are you sure you want to remove ALL container data from $container_name? !! (y/n): " remove_container_data_sure
+        if [[ "$remove_container_data_sure" =~ ^[Yy]$ ]]; then
             sudo rm -rf "$base_dir/$container_name"
             display_success "ALL container data removed from $container_name."
         fi
@@ -327,47 +315,47 @@ remove_container() {
 }
 
 # Function to edit files using ranger
-edit_files() {
+edit_files_with_ranger() {
     local container_name=$1
-    local appdata_dir="$base_dir/$container_name/appdata"
+    local container_dir="$base_dir/$container_name"
 
     if ! command -v ranger &> /dev/null; then
         display_warning "Ranger is not installed. Installing now..."
         sudo apt-get update
         sudo apt-get upgrade -y
         sudo apt-get install -y ranger
-
-        if ! command -v ranger &> /dev/null; then
-            display_error "Failed to install ranger. Please install it manually."
-            return 1
-        fi
     fi
 
-    display_info "Opening ranger in $appdata_dir..."
-    display_info "Ranger navigation guide:"
-    display_info "- Use arrow keys to navigate."
-    display_info "- Press 'Enter' to open a file or directory."
-    display_info "- Press 'q' to quit ranger."
-    display_info "- Press 'i' to view file information."
-    display_info "- Press 'A' to create a new file."
-    display_info "- Press 'd' to delete a file or directory."
-    display_info "- Press 'R' to rename a file or directory."
+    display_info "Opening $container_dir in ranger. Use the following commands:"
+    display_info "  - h/l: Move left/right (change directory)"
+    display_info "  - j/k: Move down/up (select file)"
+    display_info "  - gg/G: Go to top/bottom of the list"
+    display_info "  - i: Preview file"
+    display_info "  - d: Create a new directory"
+    display_info "  - n: Create a new file"
+    display_info "  - dd: Delete file or directory"
+    display_info "  - cw: Rename file or directory"
+    display_info "  - q: Quit ranger"
 
-    ranger "$appdata_dir"
+    ranger "$container_dir"
+    display_success "Finished editing files in $container_dir."
 }
 
 # Main menu
 while true; do
-    display_message "blue" "Podman Container Management Menu"
+    clear
+    echo "Podman Container Management Menu"
     echo "1. List all containers"
     echo "2. Start a container"
     echo "3. Stop a container"
     echo "4. Create a new container"
-    echo "5. Recompose a container"
-    echo "6. Edit container files"
+    echo "5. Compose a container"
+    echo "6. Decompose a container"
+    echo "7. Edit container files"
+    echo "8. Exit"
     echo "99. Remove a container"
-    echo "0. Exit"
-    read -p "Enter your choice (0-6, 99): " choice
+
+    read -p "Enter your choice (1-8, 99): " choice
 
     case $choice in
         1)
@@ -386,26 +374,27 @@ while true; do
             create_container "$container_name"
             ;;
         5)
-            read -p "Enter the container name to recompose: " container_name
-            recompose_container "$container_name"
+            read -p "Enter the container name to compose: " container_name
+            compose_container "$container_name"
             ;;
         6)
+            read -p "Enter the container name to decompose: " container_name
+            decompose_container "$container_name"
+            ;;
+        7)
             read -p "Enter the container name to edit files: " container_name
-            edit_files "$container_name"
+            edit_files_with_ranger "$container_name"
+            ;;
+        8)
+            display_info "Exiting..."
+            exit 0
             ;;
         99)
             read -p "Enter the container name to remove: " container_name
             remove_container "$container_name"
             ;;
-        0)
-            display_info "Exiting..."
-            exit 0
-            ;;
         *)
-            display_warning "Invalid choice. Please enter a valid option."
+            display_error "Invalid choice. Please enter a number between 1 and 8, or 99."
             ;;
     esac
-
-    read -p "Press Enter to continue..."
-    clear
 done
