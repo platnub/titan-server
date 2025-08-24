@@ -9,6 +9,7 @@ RED='\033[0;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
+MAGENTA='\033[1;35m'
 NC='\033[0m' # No Color
 
 # Function to display a header
@@ -38,6 +39,32 @@ warning_msg() {
 # Function to display an info message
 info_msg() {
     echo -e "${BLUE}[i] $1${NC}"
+}
+
+# Function to display a critical warning message
+critical_warning() {
+    echo -e "${MAGENTA}======================================================"
+    echo -e "  ${RED}WARNING: $1${NC}"
+    echo -e "======================================================${NC}"
+}
+
+# Function to prompt for confirmation with warning styling
+confirm_warning() {
+    local message=$1
+    local default=${2:-n}  # Default to 'n' (no) if not specified
+
+    while true; do
+        echo -e "${MAGENTA}======================================================"
+        echo -e "  ${RED}WARNING: $message${NC}"
+        echo -e "======================================================${NC}"
+        read -p "Are you sure? [y/N]: " -n 1 -r
+        echo
+        case $REPLY in
+            [yY]) return 0 ;;
+            [nN]|"") return 1 ;;
+            *) warning_msg "Please answer yes or no." ;;
+        esac
+    done
 }
 
 # Function to prompt for confirmation
@@ -563,6 +590,13 @@ remove_container() {
     local result=0
 
     display_header
+
+    # First confirmation
+    if ! confirm_warning "You are about to remove the container '$container_name'"; then
+        warning_msg "Container removal cancelled."
+        return 1
+    fi
+
     info_msg "Removing container: $container_name"
 
     # Check if container exists
@@ -590,15 +624,19 @@ remove_container() {
     fi
 
     # Ask to remove ALL container data
-    if confirm "Do you want to remove ALL container data from $container_name?"; then
-        if confirm "!! Are you sure you want to remove ALL container data from $container_name? !!" ; then
+    if confirm_warning "You are about to remove ALL DATA for container '$container_name'"; then
+        if confirm_warning "THIS WILL PERMANENTLY DELETE ALL DATA FOR '$container_name' INCLUDING CONFIGURATION FILES, APPLICATION DATA, AND LOGS"; then
             if sudo rm -rf "$base_dir/$container_name"; then
                 success_msg "ALL container data removed from $container_name."
             else
                 error_msg "Failed to remove container data."
                 result=1
             fi
+        else
+            warning_msg "Container data removal cancelled."
         fi
+    else
+        warning_msg "Container data removal cancelled."
     fi
 
     if [ $result -eq 0 ]; then
