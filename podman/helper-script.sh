@@ -30,6 +30,9 @@ create_container() {
       ${EDITOR:-nano} "$base_dir/$container_name/.env"
     fi
 
+    # Apply user permissions
+    chmod $user_id $base_dir/$container_name
+
     echo "Container $container_name created successfully with user."
 }
 
