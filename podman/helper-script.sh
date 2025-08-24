@@ -58,20 +58,14 @@ wait_for_container_running() {
     return 1
 }
 
-# Function to decompose a container
-decompose_container() {
+# Function to run a container
+start_container() {
     local container_name=$1
-    echo "Decomposing container $container_name..."
-    update_rootless_user "$container_name"
-    podman-compose --file "$base_dir/$container_name/compose.yaml" down
-    echo "Container $container_name decomposed successfully."
-}
+    reapply_permissions "$container_name"
 
-# Function to compose a container
-compose_container() {
-    local container_name=$1
-    echo "Composing container $container_name..."
-    podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
+    # Start the container
+    echo "Starting container $container_name..."
+    podman start "$container_name"
 
     # Wait for the container to be fully running
     if ! wait_for_container_running "$container_name"; then
@@ -92,13 +86,8 @@ compose_container() {
         fi
     fi
 
-    echo "Container $container_name composed successfully."
-}
-
-# Function to run a container (now just calls compose_container)
-start_container() {
-    local container_name=$1
-    compose_container "$container_name"
+    update_rootless_user "$container_name"
+    echo "Container $container_name started successfully."
 }
 
 # Function to stop a container
@@ -140,10 +129,18 @@ create_appdata_folders() {
     done
 }
 
-# Function to recompose a container (now just calls decompose and compose)
-recompose_container() {
+# Function to decompose a container (stop and remove containers)
+decompose_container() {
     local container_name=$1
-    echo "Recomposing container $container_name..."
+    echo "Decomposing container $container_name..."
+    podman-compose --file "$base_dir/$container_name/compose.yaml" down
+    echo "Container $container_name decomposed successfully."
+}
+
+# Function to compose a container (start containers)
+compose_container() {
+    local container_name=$1
+    echo "Composing container $container_name..."
 
     # Ask to create new folders in appdata
     read -p "Do you want to create any new folders in the appdata directory? (y/n): " create_folders
@@ -151,9 +148,17 @@ recompose_container() {
         create_appdata_folders "$container_name"
     fi
 
+    update_rootless_user "$container_name"
+    reapply_permissions "$container_name"
+    podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
+    echo "Container $container_name composed successfully."
+}
+
+# Function to recompose a container (decompose and then compose)
+recompose_container() {
+    local container_name=$1
     decompose_container "$container_name"
     compose_container "$container_name"
-    echo "Container $container_name recomposed successfully."
 }
 
 # Function to create a new container
@@ -182,10 +187,10 @@ create_container() {
     reapply_permissions "$container_name"
     echo "Container $container_name created successfully."
 
-    # Ask to compose the container
-    read -p "Do you want to compose the container now? (y/n): " create_compose_container
-    if [[ "$create_compose_container" =~ ^[Yy]$ ]]; then
-        compose_container "$container_name"
+    # Ask to run the container
+    read -p "Do you want to run the container now? (y/n): " create_start_container
+    if [[ "$create_start_container" =~ ^[Yy]$ ]]; then
+        start_container "$container_name"
     fi
 }
 
@@ -287,7 +292,6 @@ update_rootless_user() {
 
     echo "Updated rootless_user in .env"
 }
-
 # Function to remove a container
 remove_container() {
     local container_name=$1
@@ -297,6 +301,9 @@ remove_container() {
 
     # Remove the container
     podman rm "$container_name"
+
+    # Decompose the container
+    decompose_container "$container_name"
 
     # Ask to remove ALL container data
     read -p "Do you want to remove ALL container data from $container_name? (y/n): " remove_container_data
@@ -315,22 +322,20 @@ remove_container() {
 while true; do
     echo "Podman Container Management Menu"
     echo "1. List all containers"
-    echo "2. Start a container (compose)"
+    echo "2. Start a container"
     echo "3. Stop a container"
     echo "4. Create a new container"
-    echo "5. Decompose a container"
-    echo "6. Compose a container"
-    echo "7. Recompose a container"
+    echo "5. Recompose a container"
     echo "99. Remove a container"
-    echo "8. Exit"
-    read -p "Enter your choice (1-8): " choice
+    echo "6. Exit"
+    read -p "Enter your choice (1-6): " choice
 
     case $choice in
         1)
             list_containers
             ;;
         2)
-            read -p "Enter the container name to compose: " container_name
+            read -p "Enter the container name to start: " container_name
             start_container "$container_name"
             ;;
         3)
@@ -342,18 +347,10 @@ while true; do
             create_container "$container_name"
             ;;
         5)
-            read -p "Enter the container name to decompose: " container_name
-            decompose_container "$container_name"
-            ;;
-        6)
-            read -p "Enter the container name to compose: " container_name
-            compose_container "$container_name"
-            ;;
-        7)
             read -p "Enter the container name to recompose: " container_name
             recompose_container "$container_name"
             ;;
-        8)
+        6)
             echo "Exiting..."
             exit 0
             ;;
@@ -362,7 +359,7 @@ while true; do
             remove_container "$container_name"
             ;;
         *)
-            echo "Invalid choice. Please enter a number between 1 and 8."
+            echo "Invalid choice. Please enter a number between 1 and 6."
             ;;
     esac
 done
