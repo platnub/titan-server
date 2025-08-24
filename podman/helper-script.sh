@@ -249,44 +249,37 @@ decompose_container() {
 # Function to compose a container (start containers)
 compose_container() {
     local container_name=$1
-    local result=0
     local compose_file="$base_dir/$container_name/compose.yaml"
+    local result=0
 
     display_header
     info_msg "Composing container: $container_name"
 
-    # Check if container exists
-    if ! container_exists "$container_name"; then
-        error_msg "Container $container_name does not exist."
+    # Check if container directory exists
+    if ! container_dir_exists "$container_name"; then
+        error_msg "Container directory for $container_name does not exist at $base_dir/$container_name."
         return 1
     fi
 
     # Check if compose file exists
     if [ ! -f "$compose_file" ]; then
-        error_msg "Compose file $compose_file does not exist."
-        return 1
-    fi
-
-    # Check if compose file is readable
-    if [ ! -r "$compose_file" ]; then
-        error_msg "Compose file $compose_file is not readable."
+        error_msg "Compose file not found at $compose_file"
         return 1
     fi
 
     update_rootless_user "$container_name"
     reapply_permissions "$container_name"
 
-    info_msg "Using compose file: $compose_file"
-
-    # Run podman-compose with the specific compose file
+    # Use podman-compose with the compose file
     if podman-compose --file "$compose_file" up --detach; then
         success_msg "Container $container_name composed successfully."
     else
         error_msg "Failed to compose container $container_name."
-        # Show more detailed error information
-        warning_msg "Compose file used: $compose_file"
-        warning_msg "Check the compose file for syntax errors."
-        warning_msg "You can manually run: podman-compose --file $compose_file up --detach"
+        # Show logs if available
+        if [ -n "$(podman ps -a --filter name=$container_name --format '{{.Names}}')" ]; then
+            warning_msg "Container logs:"
+            podman logs "$container_name" 2>&1
+        fi
         result=1
     fi
 
@@ -295,28 +288,30 @@ compose_container() {
 # Function to recompose a container (decompose and then compose)
 recompose_container() {
     local container_name=$1
-    local result=0
     local compose_file="$base_dir/$container_name/compose.yaml"
+    local result=0
 
     display_header
     info_msg "Recomposing container: $container_name"
 
-    # Check if container exists
-    if ! container_exists "$container_name"; then
-        error_msg "Container $container_name does not exist."
+    # Check if container directory exists
+    if ! container_dir_exists "$container_name"; then
+        error_msg "Container directory for $container_name does not exist at $base_dir/$container_name."
         return 1
     fi
 
     # Check if compose file exists
     if [ ! -f "$compose_file" ]; then
-        error_msg "Compose file $compose_file does not exist."
+        error_msg "Compose file not found at $compose_file"
         return 1
     fi
 
+    # First decompose the container
     if ! decompose_container "$container_name"; then
         result=1
     fi
 
+    # Then compose it again
     if ! compose_container "$container_name"; then
         result=1
     fi
