@@ -49,6 +49,23 @@ display_info() {
     echo -e "${BLUE}INFO: $1${NC}"
 }
 
+# Function to get yes/no confirmation
+get_confirmation() {
+    local prompt="$1"
+    local default="${2:-n}"
+
+    while true; do
+        read -p "$prompt [y/n] (default: $default): " answer
+        answer=${answer:-$default}
+
+        case "$answer" in
+            [Yy]*) return 0 ;;
+            [Nn]*) return 1 ;;
+            *) display_error "Please answer yes or no." ;;
+        esac
+    done
+}
+
 # Function to list all containers
 list_containers() {
     display_header
@@ -204,17 +221,6 @@ compose_container() {
     display_footer
 }
 
-# Function to recompose a container (decompose and then compose)
-recompose_container() {
-    local container_name=$1
-    display_header
-
-    display_info "Recomposing container $container_name..."
-    decompose_container "$container_name"
-    compose_container "$container_name"
-    display_footer
-}
-
 # Function to create a new container
 create_container() {
     local container_name=$1
@@ -237,8 +243,7 @@ create_container() {
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
     # Ask to create new folders in appdata
-    read -p "Do you want to create any new folders in the appdata directory? (y/n): " create_folders
-    if [[ "$create_folders" =~ ^[Yy]$ ]]; then
+    if get_confirmation "Do you want to create any new folders in the appdata directory?"; then
         create_appdata_folders "$container_name"
     fi
 
@@ -246,30 +251,29 @@ create_container() {
     display_success "Container $container_name created successfully."
 
     # Ask to run the container
-    read -p "Do you want to compose the container now? (y/n): " compose_now
-    if [[ "$compose_now" =~ ^[Yy]$ ]]; then
+    if get_confirmation "Do you want to compose the container now?"; then
         compose_container "$container_name"
     fi
 
     display_footer
 }
 
-# Apply user permissions
+# Apply user permissions (excluding appdata contents)
 reapply_permissions() {
     local container_name=$1
 
     display_info "Applying permissions to container $container_name..."
 
-    # Set directory permissions
+    # Set directory permissions (excluding appdata contents)
     sudo chmod 700 "$base_dir/$container_name"
-    sudo chmod 700 "$base_dir/$container_name/appdata"
     sudo chmod 700 "$base_dir/$container_name/logs"
     sudo chmod 400 "$base_dir/$container_name/secrets"
     sudo chmod 400 "$base_dir/$container_name/compose.yaml"
     sudo chmod 400 "$base_dir/$container_name/.env"
 
-    # Change ownership to podman user
+    # Change ownership to podman user (excluding appdata contents)
     sudo chown -R podman:podman "$base_dir/$container_name"
+    sudo chown podman:podman "$base_dir/$container_name/appdata"
 
     # Load rootless_user if it exists
     if [ -f "$base_dir/$container_name/.env" ]; then
@@ -360,6 +364,13 @@ remove_container() {
     local container_name=$1
     display_header
 
+    # Confirm removal
+    if ! get_confirmation "Are you sure you want to remove container $container_name?"; then
+        display_info "Container removal cancelled."
+        display_footer
+        return 0
+    fi
+
     # Stop the container first
     stop_container "$container_name"
 
@@ -371,13 +382,18 @@ remove_container() {
     decompose_container "$container_name"
 
     # Ask to remove ALL container data
-    read -p "Do you want to remove ALL container data from $container_name? (y/n): " remove_container_data
-    if [[ "$remove_container_data" =~ ^[Yy]$ ]]; then
-        read -p "!! Are you sure you want to remove ALL container data from $container_name? !! (y/n): " remove_container_data_sure
-        if [[ "$remove_container_data_sure" =~ ^[Yy]$ ]]; then
+    if get_confirmation "Do you want to remove ALL container data from $container_name?"; then
+        display_warning "WARNING: This will permanently delete ALL files for $container_name!"
+        display_warning "This action cannot be undone!"
+
+        if get_confirmation "Are you ABSOLUTELY sure you want to delete ALL files for $container_name?" "n"; then
             sudo rm -rf "$base_dir/$container_name"
             display_success "ALL container data removed from $container_name."
+        else
+            display_info "Container data preservation confirmed."
         fi
+    else
+        display_info "Container data preservation confirmed."
     fi
 
     display_success "Container $container_name removed successfully."
@@ -392,25 +408,36 @@ edit_container_files() {
     # Check if ranger is installed
     if ! command -v ranger &> /dev/null; then
         display_warning "Ranger is not installed. Would you like to install it now?"
-        read -p "Install ranger? (y/n): " install_ranger
 
-        if [[ "$install_ranger" =~ ^[Yy]$ ]]; then
+        if get_confirmation "Install ranger from official repository?"; then
             # Update and upgrade system
             display_info "Updating system packages..."
             sudo apt-get update -y
             sudo apt-get upgrade -y
 
-            # Install ranger
+            # Install required dependencies
+            display_info "Installing required dependencies..."
+            sudo apt-get install -y git python3 python3-pip python3-dev
+
+            # Clone and install ranger from official repository
+            display_info "Cloning ranger from official repository..."
+            git clone https://github.com/ranger/ranger.git /tmp/ranger
+            cd /tmp/ranger || exit 1
+
             display_info "Installing ranger..."
-            sudo apt-get install -y ranger
+            sudo python3 setup.py install
 
             if [ $? -ne 0 ]; then
-                display_error "Failed to install ranger. Please install it manually."
+                display_error "Failed to install ranger. Please install it manually from https://github.com/ranger/ranger"
                 display_footer
                 return 1
             fi
+
+            # Clean up
+            cd ~ || exit 1
+            rm -rf /tmp/ranger
         else
-            display_info "Ranger is required to edit files. Please install it manually."
+            display_info "Ranger is required to edit files. Please install it manually from https://github.com/ranger/ranger"
             display_footer
             return 1
         fi
@@ -460,9 +487,10 @@ while true; do
     echo "5. Compose a container"
     echo "6. Decompose a container"
     echo "7. Edit container files with ranger"
-    echo "8. Exit"
+    echo "8. Remove a container"
+    echo "9. Exit"
     echo "----------------------------------------------"
-    read -p "Enter your choice (1-8): " choice
+    read -p "Enter your choice (1-9): " choice
 
     case $choice in
         1)
@@ -493,12 +521,16 @@ while true; do
             edit_container_files "$container_name"
             ;;
         8)
+            read -p "Enter the container name to remove: " container_name
+            remove_container "$container_name"
+            ;;
+        9)
             display_header
             echo -e "${GREEN}Exiting... Goodbye!${NC}"
             exit 0
             ;;
         *)
-            display_error "Invalid choice. Please enter a number between 1 and 8."
+            display_error "Invalid choice. Please enter a number between 1 and 9."
             display_footer
             ;;
     esac
