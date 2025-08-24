@@ -17,21 +17,23 @@ create_container() {
     # Lock password to prevent password-based login
     passwd -l "$container_name"
 
-    # Create container directory
+    # Create container directories
     mkdir -p "$base_dir/$container_name"
+    mkdir -p "$base_dir/$container_name/appdata"
+    mkdir -p "$base_dir/$container_name/logs"
+    mkdir -p "$base_dir/$container_name/secrets"
     
     # Create compose.yaml
     ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
     
     # Optional .env
-    read -p "Create a .env file? (y/n): " create_env
-    if [ "$create_env" = "y" ]; then
-      ${EDITOR:-nano} "$base_dir/$container_name/.env"
-    fi
+    echo -e "PUID=$user_id\nPGID=$user_id\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"" > "$base_dir/$container_name/.env"
+    ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
     # Apply user permissions
-    chmod 600 $base_dir/$container_name
+    chmod 600 "$base_dir/$container_name"
     chown -R "$container_name" "$base_dir/$container_name"
+    
 
     echo "Container $container_name created successfully with user."
 }
