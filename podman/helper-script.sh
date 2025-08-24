@@ -290,8 +290,13 @@ reapply_permissions() {
             if [ -d "$container_dir/appdata" ]; then
                 # First find all items in appdata with sudo
                 while IFS= read -r -d '' item; do
-                    # Then apply rootless_user ownership with podman unshare
-                    podman unshare chown -R "$rootless_user:$rootless_user" "$item"
+                    # Skip if the item is a mount point (has different ownership)
+                    if ! podman unshare stat -c "%u:%g" "$item" 2>/dev/null | grep -q "$rootless_user:$rootless_user"; then
+                        # Then apply rootless_user ownership with podman unshare
+                        if ! podman unshare chown -R "$rootless_user:$rootless_user" "$item" 2>/dev/null; then
+                            display_warning "Could not change ownership of $item - it might be a mounted file"
+                        fi
+                    fi
                 done < <(sudo find "$container_dir/appdata" -mindepth 1 -print0)
             fi
         fi
