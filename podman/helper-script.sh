@@ -8,7 +8,7 @@ list_containers() {
 }
 
 # Function to run a container
-run_container() {
+start_container() {
     local container_name=$1
     reapply_permissions "$container_name"
     podman start $container_name
@@ -56,9 +56,9 @@ create_container() {
     echo "Container $container_name created successfully."
 
     # Ask to run the container
-    read -p "Do you want to run the container now? (y/n): " create_run_container
-    if [[ "$create_run_container" =~ ^[Yy]$ ]]; then
-        run_container "$container_name"
+    read -p "Do you want to run the container now? (y/n): " create_start_container
+    if [[ "$create_start_container" =~ ^[Yy]$ ]]; then
+        start_container "$container_name"
     fi
 }
 
@@ -188,11 +188,12 @@ remove_container() {
 while true; do
     echo "Podman Container Management Menu"
     echo "1. List all containers"
-    echo "2. Run a container"
+    echo "2. Start a container"
     echo "3. Stop a container"
     echo "4. Create a new container"
+    echo "5. Recompose a container"
     echo "99. Remove a container"
-    echo "5. Exit"
+    echo "6. Exit"
     read -p "Enter your choice (1-5): " choice
 
     case $choice in
@@ -200,8 +201,8 @@ while true; do
             list_containers
             ;;
         2)
-            read -p "Enter the container name to run: " container_name
-            run_container "$container_name"
+            read -p "Enter the container name to start: " container_name
+            start_container "$container_name"
             ;;
         3)
             read -p "Enter the container name to stop: " container_name
@@ -212,6 +213,10 @@ while true; do
             create_container "$container_name"
             ;;
         5)
+            read -p "Enter the container name to recompose: " container_name
+            recompose_container "$container_name"
+            ;;
+        6)
             echo "Exiting..."
             exit 0
             ;;
@@ -220,7 +225,7 @@ while true; do
             remove_container "$container_name"
             ;;
         *)
-            echo "Invalid choice. Please enter a number between 1 and 5."
+            echo "Invalid choice. Please enter a number between 1 and 6."
             ;;
     esac
 done
