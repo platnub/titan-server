@@ -27,7 +27,7 @@ create_container() {
     sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
     
     # Optional .env
-    sudo /bin/su -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\" > \"$base_dir/$container_name/.env\""
+    sudo /bin/su -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\" > $base_dir/$container_name/.env"
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
     # Apply user permissions
