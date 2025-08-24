@@ -517,7 +517,7 @@ msg_info "Installing & configuring Podman & Installing podman-compose"
   virt-customize -q -a "${FILE}" --mkdir "/home/podman/containers" >/dev/null &&
 # Makes Podman containers run rootless
   virt-customize -q -a "${FILE}" --mkdir "/home/podman/.config/containers" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e '[containers]\nrootless = true\nuserns = \"nomap\"' > /home/podman/.config/containers/containers.conf\"" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e \"[containers]\nrootless = true\nuserns = \"nomap\"\" > /home/podman/.config/containers/containers.conf\"" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo usermod --add-subuids 10000-75535 podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo usermod --add-subgids 10000-75535 podman" >/dev/null
 # Add docker.io as a registry
