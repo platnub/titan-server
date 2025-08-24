@@ -417,22 +417,23 @@ function start_script() {
     header_info
     echo -e "${DEFAULT}${BOLD}${BL}Using Default Settings${CL}"
     default_settings
-
   else
     header_info
     echo -e "${ADVANCED}${BOLD}${RD}Using Advanced Settings${CL}"
     advanced_settings
   fi
-  # Sudo 
-  if SUDO_=$(whiptail --backtitle "Proxmox VE Helper Scripts" --box "Set Sudo " 8 58 --title "SUDO " --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
-    if [ -z $SUDO_ ]; then
-      msg_error "Sudo  cannot be empty."
-      exit-script
-    fi
-  else
+}
+
+# Sudo 
+if SUDO_=$(whiptail --backtitle "Proxmox VE Helper Scripts" --box "Set Sudo " 8 58 --title "SUDO " --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
+  if [ -z $SUDO_ ]; then
+    msg_error "Sudo  cannot be empty."
     exit-script
   fi
-}
+else
+  exit-script
+fi
+
 check_root
 arch_check
 pve_check
