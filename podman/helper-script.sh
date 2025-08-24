@@ -141,13 +141,6 @@ decompose_container() {
 compose_container() {
     local container_name=$1
     echo "Composing container $container_name..."
-
-    # Ask to create new folders in appdata
-    read -p "Do you want to create any new folders in the appdata directory? (y/n): " create_folders
-    if [[ "$create_folders" =~ ^[Yy]$ ]]; then
-        create_appdata_folders "$container_name"
-    fi
-
     update_rootless_user "$container_name"
     reapply_permissions "$container_name"
     podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
@@ -188,9 +181,9 @@ create_container() {
     echo "Container $container_name created successfully."
 
     # Ask to run the container
-    read -p "Do you want to run the container now? (y/n): " create_start_container
-    if [[ "$create_start_container" =~ ^[Yy]$ ]]; then
-        start_container "$container_name"
+    read -p "Do you want to compose the container now? (y/n): " compose_container
+    if [[ "$compose_container" =~ ^[Yy]$ ]]; then
+        compose_container "$container_name"
     fi
 }
 
