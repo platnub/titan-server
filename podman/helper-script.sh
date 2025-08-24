@@ -93,8 +93,11 @@ start_container() {
 # Function to stop a container
 stop_container() {
     local container_name=$1
-    update_rootless_user "$container_name"
-    podman stop $container_name
+    # Only update .env if this was called from option 3 in the menu
+    if [[ "$choice" == "3" ]]; then
+        update_rootless_user "$container_name"
+    fi
+    podman stop "$container_name"
     echo "Container $container_name stopped successfully."
 }
 
