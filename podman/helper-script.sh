@@ -239,7 +239,7 @@ create_container() {
 
     # Create .env file
     display_info "Creating .env file..."
-    sudo sh -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
+    sudo sh -c "echo \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
 
     # Ask to create new folders in appdata
@@ -261,44 +261,34 @@ create_container() {
 # Apply user permissions
 reapply_permissions() {
     local container_name=$1
+    local container_dir="$base_dir/$container_name"
 
     display_info "Applying permissions to container $container_name..."
 
-    # First stop the container if it's running
-    if podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null | grep -q "running"; then
-        display_info "Stopping container $container_name temporarily for permission changes..."
-        podman stop "$container_name"
-    fi
-
     # Set directory permissions (excluding appdata contents)
-    sudo chmod 700 "$base_dir/$container_name"
-    sudo chmod 700 "$base_dir/$container_name/appdata"
-    sudo chmod 700 "$base_dir/$container_name/logs"
-    sudo chmod 400 "$base_dir/$container_name/secrets"
-    sudo chmod 400 "$base_dir/$container_name/compose.yaml"
-    sudo chmod 400 "$base_dir/$container_name/.env"
+    sudo chmod 700 "$container_dir"
+    sudo chmod 700 "$container_dir/appdata"
+    sudo chmod 700 "$container_dir/logs"
+    sudo chmod 400 "$container_dir/secrets"
+    sudo chmod 400 "$container_dir/compose.yaml"
+    sudo chmod 400 "$container_dir/.env"
 
-    # Change ownership to podman user (only for directories, not contents)
-    sudo chown podman:podman "$base_dir/$container_name"
-    sudo chown podman:podman "$base_dir/$container_name/appdata"
-    sudo chown podman:podman "$base_dir/$container_name/logs"
-    sudo chown podman:podman "$base_dir/$container_name/secrets"
+    # Change ownership to podman user (only for container directories, not contents)
+    sudo chown podman:podman "$container_dir"
+    sudo chown podman:podman "$container_dir/appdata"
+    sudo chown podman:podman "$container_dir/logs"
+    sudo chown podman:podman "$container_dir/secrets"
+    sudo chown podman:podman "$container_dir/compose.yaml"
+    sudo chown podman:podman "$container_dir/.env"
 
     # Load rootless_user if it exists
-    if [ -f "$base_dir/$container_name/.env" ]; then
+    if [ -f "$container_dir/.env" ]; then
         load_rootless_user "$container_name"
         if [ -n "$rootless_user" ]; then
             # Use podman unshare to change ownership inside the container's user namespace
-            # We'll use find to only change ownership of files, not directories
-            podman unshare find "$base_dir/$container_name/appdata" -type f -exec chown "$rootless_user:$rootless_user" {} \;
+            # Only apply to appdata directory (not its contents)
+            podman unshare chown "$rootless_user:$rootless_user" "$container_dir/appdata"
         fi
-    fi
-
-    # Restart the container if we stopped it
-    if podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null | grep -q "exited"; then
-        display_info "Restarting container $container_name..."
-        podman start "$container_name"
-        wait_for_container_running "$container_name"
     fi
 
     display_success "Permissions applied successfully."
