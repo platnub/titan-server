@@ -35,6 +35,7 @@ create_container() {
     chmod 700 "$base_dir/$container_name/appdata"
     chmod 700 "$base_dir/$container_name/logs"
     chmod 400 "$base_dir/$container_name/secrets"
+    chmod 400 "$base_dir/$container_name/compose.yaml"
     chmod 400 "$base_dir/$container_name/.env"
     chown -R podman:podman "$base_dir/$container_name"
     podman unshare chown -R 1000:1000 "$base_dir/$container_name"
