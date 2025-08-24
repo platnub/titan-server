@@ -541,6 +541,17 @@ reapply_permissions() {
         return 1
     fi
 
+    # First load rootless_user if it exists
+    if [ -f "$base_dir/$container_name/.env" ]; then
+        if ! load_rootless_user "$container_name"; then
+            warning_msg "Could not load rootless_user from .env, using default permissions"
+            rootless_user=""
+        fi
+    else
+        warning_msg ".env file not found, using default permissions"
+        rootless_user=""
+    fi
+
     # Set directory permissions for the container directory and its immediate subdirectories
     if sudo chmod 700 "$base_dir/$container_name"; then
         success_msg "Set permissions for base directory"
@@ -549,7 +560,7 @@ reapply_permissions() {
         result=1
     fi
 
-    # Only change permissions for appdata directory and its contents
+    # Apply permissions to appdata directory and its contents
     if sudo chmod 700 "$base_dir/$container_name/appdata"; then
         success_msg "Set permissions for appdata directory"
     else
@@ -557,28 +568,22 @@ reapply_permissions() {
         result=1
     fi
 
-    # Change ownership of the entire container directory to podman
-    if sudo chown -R podman:podman "$base_dir/$container_name"; then
-        success_msg "Changed ownership to podman user"
-    else
-        error_msg "Failed to change ownership to podman user"
-        result=1
-    fi
-
-    # Load rootless_user if it exists
-    if [ -f "$base_dir/$container_name/.env" ]; then
-        if load_rootless_user "$container_name"; then
-            if [ -n "$rootless_user" ]; then
-                # Use podman unshare to change ownership inside the container's user namespace
-                # Only apply to the appdata directory and its contents
-                if podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"; then
-                    success_msg "Applied permissions for user $rootless_user to appdata contents"
-                else
-                    error_msg "Failed to apply permissions for user $rootless_user to appdata contents"
-                    result=1
-                fi
-            fi
+    # Apply rootless user permissions if available
+    if [ -n "$rootless_user" ]; then
+        # Use podman unshare to change ownership inside the container's user namespace
+        # Only apply to the appdata directory and its contents
+        if podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"; then
+            success_msg "Applied permissions for user $rootless_user to appdata contents"
         else
+            error_msg "Failed to apply permissions for user $rootless_user to appdata contents"
+            result=1
+        fi
+    else
+        # If no rootless_user, set ownership to podman:podman for the appdata directory
+        if sudo chown -R podman:podman "$base_dir/$container_name/appdata"; then
+            success_msg "Set ownership to podman:podman for appdata directory"
+        else
+            error_msg "Failed to set ownership to podman:podman for appdata directory"
             result=1
         fi
     fi
