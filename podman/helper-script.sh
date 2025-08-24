@@ -82,22 +82,33 @@ wait_for_container_running() {
     local attempt=0
     local status
     local health_status
+    local is_composing=${2:-false}  # New parameter to indicate if we're composing
+
     display_info "Waiting for container $container_name to be fully running..."
+
     while [ $attempt -lt $max_attempts ]; do
         # Get container status
         status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
         if [ "$status" = "running" ]; then
             # Check if the container has a health check
             health_status=$(podman inspect -f '{{.State.Health.Status}}' "$container_name" 2>/dev/null)
-            if [ -n "$health_status" ] && [ "$health_status" != "healthy" ]; then
-                display_info "Container $container_name is running but health check is $health_status..."
-            else
-                # Additional check: Ensure the container is fully initialized
+
+            if [ "$is_composing" = "true" ]; then
+                # For composing, we expect the initialization file
                 if podman exec "$container_name" test -f /tmp/container_initialized; then
                     display_success "Container $container_name is running, healthy, and fully initialized."
                     return 0
                 else
                     display_info "Container $container_name is running but not yet fully initialized..."
+                fi
+            else
+                # For starting, we just need the container to be running
+                # Check if we can get the rootless_user
+                if podman top "$container_name" user huser 2>/dev/null | grep -q "abc"; then
+                    display_success "Container $container_name is running and ready."
+                    return 0
+                else
+                    display_info "Container $container_name is running but not yet ready..."
                 fi
             fi
         elif [ "$status" = "exited" ] || [ "$status" = "dead" ]; then
@@ -114,6 +125,7 @@ wait_for_container_running() {
         attempt=$((attempt + 1))
         sleep 5  # Increased from 2 to 5 seconds
     done
+
     display_error "Timeout waiting for container $container_name to start."
     display_info "Current status: $status"
     echo "Container logs:"
@@ -125,29 +137,23 @@ wait_for_container_running() {
 start_container() {
     local container_name=$1
     display_header
-
     reapply_permissions "$container_name"
-
     # Start the container
     display_info "Starting container $container_name..."
     podman start "$container_name"
-
     # Wait for the container to be fully running
-    if ! wait_for_container_running "$container_name"; then
+    if ! wait_for_container_running "$container_name" "false"; then
         display_error "Container $container_name did not start properly."
-
         # Try to restart the container if it failed
         display_info "Attempting to restart container $container_name..."
         podman restart "$container_name"
-
         # Wait again
-        if ! wait_for_container_running "$container_name"; then
+        if ! wait_for_container_running "$container_name" "false"; then
             display_error "Container $container_name failed to start after restart."
             display_footer
             return 1
         fi
     fi
-
     update_rootless_user "$container_name"
     display_success "Container $container_name started successfully."
     display_footer
@@ -214,10 +220,15 @@ decompose_container() {
 compose_container() {
     local container_name=$1
     display_header
-
     display_info "Composing container $container_name..."
     reapply_permissions "$container_name"
     podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
+    # Wait for the container to be fully running with composing flag
+    if ! wait_for_container_running "$container_name" "true"; then
+        display_error "Container $container_name did not start properly after composing."
+        display_footer
+        return 1
+    fi
     update_rootless_user "$container_name"
     display_success "Container $container_name composed successfully."
     display_footer
