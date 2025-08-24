@@ -535,7 +535,7 @@ if [ "$OPEN_PORTS" = "yes" ]; then
 else
   msg_ok "Skipping privileged ports 80+ configuration for Podman containers"
 fi
-msg_info "Installing, configuring and rebooting SSH"
+msg_info "Installing, configuring and restarting SSH"
   virt-customize -q -a "${FILE}" --run-command "sudo apt install ssh -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo apt-get install fail2ban -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo sed -i 's/\#Port 22/Port ${SSH_PORT}/' /etc/ssh/sshd_config" >/dev/null &&
