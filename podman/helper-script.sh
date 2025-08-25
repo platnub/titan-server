@@ -271,14 +271,30 @@ edit_files_with_ranger() {
         fi
     fi
 
-    # Ensure ranger config directory exists
-    mkdir -p /home/podman/.config/ranger
+    # Ensure ranger config directory exists with proper permissions
+    if [ ! -d "/home/podman/.config/ranger" ]; then
+        echo "Creating ranger configuration directory..."
+        sudo mkdir -p /home/podman/.config/ranger
+        sudo chown -R podman:podman /home/podman/.config/ranger
+        sudo chmod -R 700 /home/podman/.config/ranger
+    fi
 
     # Open ranger-fm in the specified container's appdata directory
     echo "Opening ranger-fm for container $container_name..."
     echo "You can create, edit, and delete files in $appdata_dir."
     echo "To quit ranger-fm, press 'q' and confirm if prompted."
-    ranger "$appdata_dir"
+    echo "Basic ranger-fm navigation:"
+    echo "  - Use arrow keys to navigate"
+    echo "  - Press 'Enter' to open/select files"
+    echo "  - Press 'i' to view file information"
+    echo "  - Press 'e' to edit a file"
+    echo "  - Press 'd' to delete a file"
+    echo "  - Press 'm' to create a new file"
+    echo "  - Press 'R' to rename a file"
+    echo "  - Press 'q' to quit ranger-fm"
+
+    # Run ranger with sudo to ensure proper permissions
+    sudo -u podman ranger "$appdata_dir"
 }
 
 # Function to remove a container
