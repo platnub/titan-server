@@ -435,7 +435,7 @@ compose_container() {
         return 1
     }
 
-    if ! podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach; then
+    if ! podman-compose --file "$base_dir/$container_name/compose.yml" up --detach; then
         error_msg "Failed to compose container $container_name"
         return 1
     fi
@@ -474,10 +474,10 @@ create_container() {
         return 1
     fi
 
-    # Create compose.yaml
-    info_msg "Creating compose.yaml file..."
-    if ! sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"; then
-        error_msg "Failed to create compose.yaml file"
+    # Create compose.yml
+    info_msg "Creating compose.yml file..."
+    if ! sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yml"; then
+        error_msg "Failed to create compose.yml file"
         return 1
     fi
 
@@ -530,7 +530,7 @@ reapply_permissions() {
           sudo chmod 700 "$base_dir/$container_name/appdata" &&
           sudo chmod 700 "$base_dir/$container_name/logs" &&
           sudo chmod 400 "$base_dir/$container_name/secrets" &&
-          sudo chmod 400 "$base_dir/$container_name/compose.yaml" &&
+          sudo chmod 400 "$base_dir/$container_name/compose.yml" &&
           sudo chmod 400 "$base_dir/$container_name/.env"); then
         error_msg "Failed to set directory permissions"
         return 1
