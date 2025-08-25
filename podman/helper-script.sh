@@ -252,61 +252,74 @@ update_rootless_user() {
     echo "Updated rootless_user in .env"
 }
 
-# Function to edit files using ranger-fm
-edit_files_with_ranger() {
+# Function to browse and edit files using a simple menu
+browse_and_edit_files() {
     local container_name=$1
-    local appdata_dir="$base_dir/$container_name/appdata"
+    local container_dir="$base_dir/$container_name"
+    local current_dir="$container_dir"
 
-    # Check if ranger-fm is installed
-    if ! command -v ranger &> /dev/null; then
-        echo "ranger-fm is not installed. Please install it first."
-        read -p "Do you want to install ranger-fm now? (y/n): " install_ranger
-        if [[ "$install_ranger" =~ ^[Yy]$ ]]; then
+    # Check if nano is installed
+    if ! command -v nano &> /dev/null; then
+        echo "nano is not installed. Please install it first."
+        read -p "Do you want to install nano now? (y/n): " install_nano
+        if [[ "$install_nano" =~ ^[Yy]$ ]]; then
             sudo apt-get update && sudo apt-get upgrade -y
-            sudo apt-get install -y ranger
-            echo "ranger-fm installed successfully."
+            sudo apt-get install -y nano
+            echo "nano installed successfully."
         else
-            echo "Cannot proceed without ranger-fm. Exiting..."
+            echo "Cannot proceed without nano. Exiting..."
             return 1
         fi
     fi
 
-    # Ensure ranger config directory exists with proper permissions
-    if [ ! -d "/home/podman/.config/ranger" ]; then
-        echo "Creating ranger configuration directory..."
-        sudo mkdir -p /home/podman/.config/ranger
-        sudo chown -R podman:podman /home/podman/.config/ranger
-        sudo chmod -R 700 /home/podman/.config/ranger
-    fi
+    while true; do
+        echo "============================================="
+        echo "Current Directory: $current_dir"
+        echo "============================================="
+        echo "Files and Directories:"
+        echo "============================================="
+        # List files and directories, excluding appdata
+        local items=($(ls -p "$current_dir" | grep -v '/appdata$'))
+        for i in "${!items[@]}"; do
+            echo "$((i + 1)). ${items[$i]}"
+        done
+        echo "============================================="
+        echo "Options:"
+        echo "============================================="
+        echo "0. Go back to previous directory"
+        echo "99. Exit file browser"
+        echo "============================================="
+        read -p "Enter your choice (1-${#items[@]}, 0, or 99): " choice
 
-    # Create a custom ranger configuration to exclude the appdata folder
-    local custom_rc_file="/home/podman/.config/ranger/rc.conf"
-    if [ ! -f "$custom_rc_file" ]; then
-        echo "Creating custom ranger configuration to exclude appdata folder..."
-        sudo -u podman sh -c "cat > $custom_rc_file << 'EOF'
-set exclude appdata/*
-EOF"
-        sudo chown podman:podman "$custom_rc_file"
-        sudo chmod 600 "$custom_rc_file"
-    fi
-
-    # Open ranger-fm in the specified container's appdata directory
-    echo "Opening ranger-fm for container $container_name..."
-    echo "You can create, edit, and delete files in $appdata_dir."
-    echo "The appdata folder is excluded from the list."
-    echo "To quit ranger-fm, press 'q' and confirm if prompted."
-    echo "Basic ranger-fm navigation:"
-    echo "  - Use arrow keys to navigate"
-    echo "  - Press 'Enter' to open/select files"
-    echo "  - Press 'i' to view file information"
-    echo "  - Press 'e' to edit a file"
-    echo "  - Press 'd' to delete a file"
-    echo "  - Press 'm' to create a new file"
-    echo "  - Press 'R' to rename a file"
-    echo "  - Press 'q' to quit ranger-fm"
-
-    # Run ranger with sudo to ensure proper permissions
-    sudo -u podman ranger "$appdata_dir"
+        if [[ "$choice" =~ ^[0-9]+$ ]]; then
+            if [ "$choice" -eq 0 ]; then
+                # Go back to previous directory
+                if [ "$current_dir" != "$container_dir" ]; then
+                    current_dir=$(dirname "$current_dir")
+                else
+                    echo "Already at the root directory of the container."
+                fi
+            elif [ "$choice" -eq 99 ]; then
+                # Exit file browser
+                break
+            elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#items[@]}" ]; then
+                # Selected a file or directory
+                local selected_item="${items[$((choice - 1))]}"
+                if [ -d "$current_dir/$selected_item" ]; then
+                    # It's a directory, navigate into it
+                    current_dir="$current_dir/$selected_item"
+                else
+                    # It's a file, open it with nano
+                    echo "Opening $current_dir/$selected_item with nano..."
+                    nano "$current_dir/$selected_item"
+                fi
+            else
+                echo "Invalid choice. Please enter a valid number."
+            fi
+        else
+            echo "Invalid input. Please enter a number."
+        fi
+    done
 }
 
 # Function to remove a container
@@ -341,7 +354,7 @@ while true; do
     echo "4. Create a new container"
     echo "5. Compose a container"
     echo "6. Decompose a container"
-    echo "7. Edit files with ranger-fm"
+    echo "7. Browse and edit files"
     echo "99. Remove a container"
     echo "8. Exit"
     echo "============================================="
@@ -371,8 +384,8 @@ while true; do
             decompose_container "$container_name"
             ;;
         7)
-            read -p "Enter the container name to edit files: " container_name
-            edit_files_with_ranger "$container_name"
+            read -p "Enter the container name to browse and edit files: " container_name
+            browse_and_edit_files "$container_name"
             ;;
         8)
             echo "Exiting..."
