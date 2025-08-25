@@ -114,22 +114,26 @@ manage_files() {
         echo "============================================="
         # List files and directories with proper sudo for appdata
         if [[ "$current_dir" == *"appdata"* ]]; then
-            # Get list of items with their types (d for directory, - for file)
-            local items=($(sudo ls -lA "$current_dir" 2>/dev/null | awk '{print $1 " " $9}'))
+            local items=($(sudo ls -lA "$current_dir" 2>/dev/null | awk '{print $9}'))
         else
-            local items=($(ls -lA "$current_dir" 2>/dev/null | awk '{print $1 " " $9}'))
+            local items=($(ls -lA "$current_dir" 2>/dev/null | awk '{print $9}'))
         fi
-
-        # Display items with / appended to directories
+        
+        # Display files and directories with / appended to directories
         for i in "${!items[@]}"; do
-            local item_type=${items[$i]%% *}
-            local item_name=${items[$i]#* }
-
-            # Append / to directory names
-            if [[ "$item_type" == d* ]]; then
-                echo "$((i + 1)). ${item_name}/"
+            local item="${items[$i]}"
+            if [[ "$current_dir" == *"appdata"* ]]; then
+                local item_type=$(sudo ls -ld "$current_dir/$item" 2>/dev/null | awk '{print $1}')
             else
-                echo "$((i + 1)). ${item_name}"
+                local item_type=$(ls -ld "$current_dir/$item" 2>/dev/null | awk '{print $1}')
+            fi
+        
+            if [[ "$item_type" == d* ]]; then
+                # It's a directory - append /
+                echo "$((i + 1)). ${item}/"
+            else
+                # It's a file
+                echo "$((i + 1)). ${item}"
             fi
         done
 
