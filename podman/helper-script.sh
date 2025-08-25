@@ -7,25 +7,81 @@
 # Base directory for all container data
 base_dir="/home/podman/containers"
 
+# Color definitions
+RED='\033[1;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[1;32m'
+BLUE='\033[1;34m'
+MAGENTA='\033[1;35m'
+CYAN='\033[1;36m'
+WHITE='\033[1;37m'
+RESET='\033[0m'
+
 # Function to display error messages in red
 error_msg() {
-    echo -e "\033[1;31m[ERROR] $1\033[0m" >&2
+    echo -e "${RED}[ERROR]${RESET} $1" >&2
 }
 
 # Function to display warning messages in yellow
 warning_msg() {
-    echo -e "\033[1;33m[WARNING] $1\033[0m"
+    echo -e "${YELLOW}[WARNING]${RESET} $1"
 }
 
 # Function to display informational messages in green
 info_msg() {
-    echo -e "\033[1;32m[INFO] $1\033[0m"
+    echo -e "${GREEN}[INFO]${RESET} $1"
+}
+
+# Function to display success messages in blue
+success_msg() {
+    echo -e "${BLUE}[SUCCESS]${RESET} $1"
+}
+
+# Function to display important messages in magenta
+important_msg() {
+    echo -e "${MAGENTA}[IMPORTANT]${RESET} $1"
+}
+
+# Function to display debug messages in cyan
+debug_msg() {
+    echo -e "${CYAN}[DEBUG]${RESET} $1"
+}
+
+# Function to display a separator line
+separator() {
+    echo -e "${WHITE}---------------------------------------------${RESET}"
+}
+
+# Function to display a header
+header() {
+    clear
+    separator
+    echo -e "${WHITE}${1}${RESET}"
+    separator
 }
 
 # Function to list all containers
 list_containers() {
-    info_msg "Listing all Podman containers:"
-    podman ps -a || error_msg "Failed to list containers. Check if Podman is running."
+    header "Listing All Podman Containers"
+    info_msg "Retrieving container information..."
+    echo ""
+
+    # Display running containers
+    echo -e "${GREEN}Running Containers:${RESET}"
+    podman ps --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}" || error_msg "Failed to list running containers."
+
+    echo ""
+    # Display stopped containers
+    echo -e "${YELLOW}Stopped Containers:${RESET}"
+    podman ps -a --filter "status=exited" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}" || error_msg "Failed to list stopped containers."
+
+    echo ""
+    # Display created containers
+    echo -e "${BLUE}Created Containers:${RESET}"
+    podman ps -a --filter "status=created" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}" || error_msg "Failed to list created containers."
+
+    echo ""
+    separator
 }
 
 # Function to wait for container to be fully running
@@ -51,12 +107,11 @@ wait_for_container_running() {
                 warning_msg "Container $container_name is running but health check is $health_status..."
             else
                 # Either no health check or it's healthy
-                info_msg "Container $container_name is running and healthy."
+                success_msg "Container $container_name is running and healthy."
                 return 0
             fi
         elif [ "$status" = "exited" ] || [ "$status" = "dead" ]; then
             error_msg "Container $container_name is in $status state."
-
             # Get exit code for more detailed error
             exit_code=$(podman inspect -f '{{.State.ExitCode}}' "$container_name" 2>/dev/null)
 
@@ -124,7 +179,7 @@ start_container() {
     fi
 
     update_rootless_user "$container_name" || warning_msg "Failed to update rootless user for $container_name"
-    info_msg "Container $container_name started successfully."
+    success_msg "Container $container_name started successfully."
 }
 
 # Function to stop a container
@@ -148,7 +203,7 @@ stop_container() {
         return 1
     fi
 
-    info_msg "Container $container_name stopped successfully."
+    success_msg "Container $container_name stopped successfully."
 }
 
 # Function to manage files (browse, edit, create, delete)
@@ -173,7 +228,7 @@ manage_files() {
                 error_msg "Failed to install nano."
                 return 1
             fi
-            info_msg "nano installed successfully."
+            success_msg "nano installed successfully."
         else
             error_msg "Cannot proceed without nano. Exiting..."
             return 1
@@ -181,12 +236,11 @@ manage_files() {
     fi
 
     while true; do
-        clear
-        echo "============================================="
-        echo "Current Directory: $current_dir"
-        echo "============================================="
-        echo "Files and Directories:"
-        echo "============================================="
+        header "File Manager - $container_name"
+        echo -e "${GREEN}Current Directory:${RESET} $current_dir"
+        separator
+        echo -e "${GREEN}Files and Directories:${RESET}"
+        separator
 
         # List files and directories with proper sudo for appdata
         if [[ "$current_dir" == *"appdata"* ]]; then
@@ -212,21 +266,22 @@ manage_files() {
 
             if [[ "$item_type" == d* ]]; then
                 # It's a directory - append /
-                echo "$((i + 1)). ${item}/"
+                echo -e "${BLUE}$((i + 1)). ${item}/${RESET}"
             else
                 # It's a file
-                echo "$((i + 1)). ${item}"
+                echo -e "${WHITE}$((i + 1)). ${item}${RESET}"
             fi
         done
 
-        echo "============================================="
-        echo "Options:"
-        echo "============================================="
-        echo "0. Go back to previous directory"
-        echo "c. Create new file"
-        echo "d. Delete file/directory"
-        echo "99. Exit file manager"
-        echo "============================================="
+        separator
+        echo -e "${GREEN}Options:${RESET}"
+        separator
+        echo -e "${WHITE}0. Go back to previous directory${RESET}"
+        echo -e "${WHITE}c. Create new file${RESET}"
+        echo -e "${WHITE}d. Delete file/directory${RESET}"
+        echo -e "${WHITE}99. Exit file manager${RESET}"
+        separator
+
         read -p "Enter your choice (1-${#items[@]}, 0, c, d, or 99): " choice
 
         if [[ "$choice" =~ ^[0-9]+$ ]]; then
@@ -254,9 +309,9 @@ manage_files() {
                 if [[ "$item_type" == d* ]]; then
                     # It's a directory
                     if [[ "$current_dir/$selected_item" == *"appdata"* ]]; then
-                        warning_msg "WARNING: You are entering the appdata directory."
-                        warning_msg "This directory contains sensitive permissions. Be careful with your changes."
-                        warning_msg "This operation requires sudo rights."
+                        important_msg "WARNING: You are entering the appdata directory."
+                        important_msg "This directory contains sensitive permissions. Be careful with your changes."
+                        important_msg "This operation requires sudo rights."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
                     fi
                     # Fix: Ensure we don't add double slashes when concatenating paths
@@ -268,8 +323,8 @@ manage_files() {
                     info_msg "Opening $file_path with nano..."
 
                     if [[ "$current_dir" == *"appdata"* ]]; then
-                        warning_msg "WARNING: You are editing files in the appdata directory."
-                        warning_msg "This directory contains sensitive permissions. Be careful with your changes."
+                        important_msg "WARNING: You are editing files in the appdata directory."
+                        important_msg "This directory contains sensitive permissions. Be careful with your changes."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
                         sudo nano "$file_path" || error_msg "Failed to open file with nano."
                     else
@@ -287,8 +342,8 @@ manage_files() {
                 local file_path="${current_dir%/}/${new_file}"
 
                 if [[ "$current_dir" == *"appdata"* ]]; then
-                    warning_msg "WARNING: You are creating a file in the appdata directory."
-                    warning_msg "This directory contains sensitive permissions. Be careful with your changes."
+                    important_msg "WARNING: You are creating a file in the appdata directory."
+                    important_msg "This directory contains sensitive permissions. Be careful with your changes."
                     read -p "Press Enter to continue or Ctrl+C to cancel..."
 
                     if ! (sudo touch "$file_path" && sudo chmod 600 "$file_path"); then
@@ -308,7 +363,7 @@ manage_files() {
                     fi
                 fi
 
-                info_msg "File $file_path created."
+                success_msg "File $file_path created."
                 sleep 2
             fi
         elif [[ "$choice" == "d" ]]; then
@@ -318,8 +373,8 @@ manage_files() {
                 local item_path="${current_dir%/}/${delete_item}"
 
                 if [[ "$current_dir" == *"appdata"* ]]; then
-                    warning_msg "WARNING: You are deleting a file/directory in the appdata directory."
-                    warning_msg "This directory contains sensitive permissions. Be careful with your changes."
+                    important_msg "WARNING: You are deleting a file/directory in the appdata directory."
+                    important_msg "This directory contains sensitive permissions. Be careful with your changes."
                     read -p "Press Enter to continue or Ctrl+C to cancel..."
 
                     if ! sudo rm -rf "$item_path"; then
@@ -333,7 +388,7 @@ manage_files() {
                     fi
                 fi
 
-                info_msg "Deleted $item_path"
+                success_msg "Deleted $item_path"
                 sleep 2
             fi
         else
@@ -361,7 +416,7 @@ decompose_container() {
         return 1
     fi
 
-    info_msg "Container $container_name decomposed successfully."
+    success_msg "Container $container_name decomposed successfully."
 }
 
 # Function to compose a container (start containers)
@@ -375,7 +430,6 @@ compose_container() {
     fi
 
     info_msg "Composing container $container_name..."
-
     reapply_permissions "$container_name" || {
         error_msg "Failed to reapply permissions for $container_name"
         return 1
@@ -393,7 +447,7 @@ compose_container() {
     fi
 
     update_rootless_user "$container_name" || warning_msg "Failed to update rootless user for $container_name"
-    info_msg "Container $container_name composed successfully."
+    success_msg "Container $container_name composed successfully."
 }
 
 # Function to create a new container
@@ -450,7 +504,7 @@ create_container() {
         return 1
     }
 
-    info_msg "Container $container_name created successfully."
+    success_msg "Container $container_name created successfully."
 
     # Ask to run the container
     read -p "Do you want to compose the container now? (y/n): " compose_now
@@ -491,7 +545,6 @@ reapply_permissions() {
     # Load rootless_user if it exists
     if [ -f "$base_dir/$container_name/.env" ]; then
         load_rootless_user "$container_name" || warning_msg "Failed to load rootless user from .env"
-
         if [ -n "$rootless_user" ]; then
             # Use podman unshare to change ownership inside the container's user namespace
             if ! podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"; then
@@ -500,7 +553,7 @@ reapply_permissions() {
         fi
     fi
 
-    info_msg "Permissions applied successfully."
+    success_msg "Permissions applied successfully."
 }
 
 # Load rootless_user from .env
@@ -608,7 +661,7 @@ update_rootless_user() {
         fi
     fi
 
-    info_msg "Updated rootless_user in .env to $podman_huser"
+    success_msg "Updated rootless_user in .env to $podman_huser"
 }
 
 # Function to remove a container
@@ -639,16 +692,16 @@ remove_container() {
     if [[ "$remove_container_data" =~ ^[Yy]$ ]]; then
         read -p "!! Are you sure you want to remove ALL container data from $container_name? !! (y/n): " remove_container_data_sure
         if [[ "$remove_container_data_sure" =~ ^[Yy]$ ]]; then
-            warning_msg "Removing ALL container data from $container_name..."
+            important_msg "Removing ALL container data from $container_name..."
             if ! sudo rm -rf "$base_dir/$container_name"; then
                 error_msg "Failed to remove container data from $container_name"
                 return 1
             fi
-            info_msg "ALL container data removed from $container_name."
+            success_msg "ALL container data removed from $container_name."
         fi
     fi
 
-    info_msg "Container $container_name removed successfully."
+    success_msg "Container $container_name removed successfully."
 }
 
 # Function to create appdata folders
@@ -681,7 +734,7 @@ create_appdata_folders() {
             continue
         fi
 
-        info_msg "Created folder $folder_name in appdata directory."
+        success_msg "Created folder $folder_name in appdata directory."
 
         # Set proper permissions
         if ! sudo chmod 700 "$appdata_dir/$folder_name"; then
@@ -696,27 +749,27 @@ create_appdata_folders() {
         fi
     done
 
-    info_msg "Finished creating additional folders in appdata directory."
+    success_msg "Finished creating additional folders in appdata directory."
 }
 
 # Main menu
 while true; do
-    clear
-    echo "============================================="
-    echo "Podman Container Management Menu"
-    echo "============================================="
-    echo "1. List all containers"
-    echo "2. Start a container"
-    echo "3. Stop a container"
-    echo "4. Create a new container"
-    echo "5. Compose a container"
-    echo "6. Decompose a container"
-    echo "7. Browse and edit files"
-    echo "8. Add more appdata files"
-    echo "9. Reapply permissions to a container"
-    echo "99. Remove a container"
-    echo "0. Exit"
-    echo "============================================="
+    header "Podman Container Management Menu"
+
+    echo -e "${GREEN}1. List all containers${RESET}"
+    echo -e "${GREEN}2. Start a container${RESET}"
+    echo -e "${GREEN}3. Stop a container${RESET}"
+    echo -e "${GREEN}4. Create a new container${RESET}"
+    echo -e "${GREEN}5. Compose a container${RESET}"
+    echo -e "${GREEN}6. Decompose a container${RESET}"
+    echo -e "${GREEN}7. Browse and edit files${RESET}"
+    echo -e "${GREEN}8. Add more appdata files${RESET}"
+    echo -e "${GREEN}9. Reapply permissions to a container${RESET}"
+    echo -e "${RED}99. Remove a container${RESET}"
+    echo -e "${BLUE}0. Exit${RESET}"
+
+    separator
+
     read -p "Enter your choice (0-9, 99): " choice
 
     case $choice in
