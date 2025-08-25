@@ -271,15 +271,6 @@ edit_files_with_ranger() {
         fi
     fi
 
-    # Ensure the appdata directory exists
-    if [ ! -d "$appdata_dir" ]; then
-        echo "Directory $appdata_dir does not exist. Creating it now..."
-        sudo mkdir -p "$appdata_dir"
-        sudo chown -R podman:podman "$appdata_dir"
-        sudo chmod -R 700 "$appdata_dir"
-        echo "Directory $appdata_dir created successfully."
-    fi
-
     # Ensure ranger config directory exists with proper permissions
     if [ ! -d "/home/podman/.config/ranger" ]; then
         echo "Creating ranger configuration directory..."
@@ -288,14 +279,16 @@ edit_files_with_ranger() {
         sudo chmod -R 700 /home/podman/.config/ranger
     fi
 
-    # Set up terminal for ranger
-    echo "Setting up terminal for ranger-fm..."
-    export TERM=xterm-256color
-    stty sane
+    # Create a temporary directory
+    temp_dir=$(mktemp -d)
 
-    # Open ranger-fm in the specified container's appdata directory
+    # Copy the files to the temporary directory
+    echo "Copying files to temporary directory..."
+    cp -r "$appdata_dir"/* "$temp_dir"
+
+    # Open ranger-fm in the temporary directory
     echo "Opening ranger-fm for container $container_name..."
-    echo "You can create, edit, and delete files in $appdata_dir."
+    echo "You can create, edit, and delete files in $temp_dir."
     echo "To quit ranger-fm, press 'q' and confirm if prompted."
     echo "Basic ranger-fm navigation:"
     echo "  - Use arrow keys to navigate"
@@ -307,15 +300,17 @@ edit_files_with_ranger() {
     echo "  - Press 'R' to rename a file"
     echo "  - Press 'q' to quit ranger-fm"
 
-    # Run ranger with proper environment and error handling
-    if ! sudo -u podman -E sh -c "cd \"$appdata_dir\" && ranger"; then
-        echo "Error: Failed to launch ranger-fm. This might be due to terminal issues."
-        echo "Try running the following command manually:"
-        echo "sudo -u podman ranger \"$appdata_dir\""
-        echo "If you still experience issues, try running:"
-        echo "sudo -u podman script -qc \"ranger\" /dev/null"
-        return 1
-    fi
+    # Run ranger with sudo to ensure proper permissions
+    sudo -u podman ranger "$temp_dir"
+
+    # Copy the files back to the original directory
+    echo "Copying files back to original directory..."
+    cp -r "$temp_dir"/* "$appdata_dir"
+
+    # Clean up the temporary directory
+    rm -rf "$temp_dir"
+
+    echo "Files have been updated in $appdata_dir."
 }
 
 # Function to remove a container
