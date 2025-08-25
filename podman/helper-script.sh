@@ -311,7 +311,7 @@ browse_and_edit_files() {
                 else
                     # It's a file, open it with nano
                     echo "Opening $current_dir/$selected_item with nano..."
-                    nano "$current_dir/$selected_item"
+                    sudo nano "$current_dir/$selected_item"
                 fi
             else
                 echo "Invalid choice. Please enter a valid number."
