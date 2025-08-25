@@ -1,30 +1,6 @@
 #!/bin/bash
 base_dir="/home/podman/containers"
 
-# Function to list all containers and let user choose one
-choose_container() {
-    local containers=($(podman ps -a --format "{{.Names}}"))
-    if [ ${#containers[@]} -eq 0 ]; then
-        echo "No containers found."
-        return 1
-    fi
-
-    echo "Available containers:"
-    for i in "${!containers[@]}"; do
-        echo "$((i+1)). ${containers[$i]}"
-    done
-
-    while true; do
-        read -p "Select a container (1-${#containers[@]}): " choice
-        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#containers[@]}" ]; then
-            echo "${containers[$((choice-1))]}"
-            return 0
-        else
-            echo "Invalid choice. Please enter a number between 1 and ${#containers[@]}."
-        fi
-    done
-}
-
 # Function to list all containers
 list_containers() {
     echo "Listing all Podman containers:"
@@ -142,7 +118,7 @@ manage_files() {
         else
             local items=($(ls -lA "$current_dir" 2>/dev/null | awk '{print $9}'))
         fi
-
+        
         # Display files and directories with / appended to directories
         for i in "${!items[@]}"; do
             local item="${items[$i]}"
@@ -151,7 +127,7 @@ manage_files() {
             else
                 local item_type=$(ls -ld "$current_dir/$item" 2>/dev/null | awk '{print $1}')
             fi
-
+        
             if [[ "$item_type" == d* ]]; then
                 # It's a directory - append /
                 echo "$((i + 1)). ${item}/"
@@ -160,6 +136,7 @@ manage_files() {
                 echo "$((i + 1)). ${item}"
             fi
         done
+
         echo "============================================="
         echo "Options:"
         echo "============================================="
@@ -435,7 +412,7 @@ remove_container() {
 
 # Main menu
 while true; do
-    echo "============================================="
+    echo "=============================================a"
     echo "Podman Container Management Menu"
     echo "============================================="
     echo "1. List all containers"
@@ -456,56 +433,40 @@ while true; do
             list_containers
             ;;
         2)
-            container_name=$(choose_container)
-            if [ -n "$container_name" ]; then
-                start_container "$container_name"
-            fi
+            read -p "Enter the container name to start: " container_name
+            start_container "$container_name"
             ;;
         3)
-            container_name=$(choose_container)
-            if [ -n "$container_name" ]; then
-                stop_container "$container_name"
-            fi
+            read -p "Enter the container name to stop: " container_name
+            stop_container "$container_name"
             ;;
         4)
             read -p "Enter the new container name: " container_name
             create_container "$container_name"
             ;;
         5)
-            container_name=$(choose_container)
-            if [ -n "$container_name" ]; then
-                compose_container "$container_name"
-            fi
+            read -p "Enter the container name to compose: " container_name
+            compose_container "$container_name"
             ;;
         6)
-            container_name=$(choose_container)
-            if [ -n "$container_name" ]; then
-                decompose_container "$container_name"
-            fi
+            read -p "Enter the container name to decompose: " container_name
+            decompose_container "$container_name"
             ;;
         7)
-            container_name=$(choose_container)
-            if [ -n "$container_name" ]; then
-                manage_files "$container_name"
-            fi
+            read -p "Enter the container name to browse and edit files: " container_name
+            manage_files "$container_name"
             ;;
         8)
-            container_name=$(choose_container)
-            if [ -n "$container_name" ]; then
-                create_appdata_folders "$container_name"
-            fi
+            read -p "Enter the container name to add more appdata files: " container_name
+            create_appdata_folders "$container_name"
             ;;
         9)
-            container_name=$(choose_container)
-            if [ -n "$container_name" ]; then
-                reapply_permissions "$container_name"
-            fi
+            read -p "Enter the container name to reapply permissions: " container_name
+            reapply_permissions "$container_name"
             ;;
         99)
-            container_name=$(choose_container)
-            if [ -n "$container_name" ]; then
-                remove_container "$container_name"
-            fi
+            read -p "Enter the container name to remove: " container_name
+            remove_container "$container_name"
             ;;
         0)
             echo "Exiting..."
