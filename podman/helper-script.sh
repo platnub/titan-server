@@ -92,7 +92,6 @@ manage_files() {
     local container_name=$1
     local container_dir="$base_dir/$container_name"
     local current_dir="$container_dir"
-
     # Check if nano is installed
     if ! command -v nano &> /dev/null; then
         echo "nano is not installed. Please install it first."
@@ -106,7 +105,6 @@ manage_files() {
             return 1
         fi
     fi
-
     while true; do
         clear
         echo "============================================="
@@ -114,18 +112,15 @@ manage_files() {
         echo "============================================="
         echo "Files and Directories:"
         echo "============================================="
-
         # List files and directories with proper sudo for appdata
         if [[ "$current_dir" == *"appdata"* ]]; then
             local items=($(sudo ls -pA "$current_dir" 2>/dev/null))
         else
             local items=($(ls -pA "$current_dir" 2>/dev/null))
         fi
-
         for i in "${!items[@]}"; do
             echo "$((i + 1)). ${items[$i]}"
         done
-
         echo "============================================="
         echo "Options:"
         echo "============================================="
@@ -135,11 +130,13 @@ manage_files() {
         echo "99. Exit file manager"
         echo "============================================="
         read -p "Enter your choice (1-${#items[@]}, 0, c, d, or 99): " choice
-
         if [[ "$choice" =~ ^[0-9]+$ ]]; then
             if [ "$choice" -eq 0 ]; then
                 if [ "$current_dir" != "$container_dir" ]; then
+                    # Fix: Use dirname to properly handle path navigation
                     current_dir=$(dirname "$current_dir")
+                    # Ensure we don't end up with double slashes
+                    current_dir=${current_dir%/}
                 else
                     echo "Already at the root directory of the container."
                     sleep 2
@@ -155,16 +152,19 @@ manage_files() {
                         echo "This operation requires sudo rights."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
                     fi
-                    current_dir="${current_dir%/}/${selected_item%/}"
+                    # Fix: Ensure we don't add double slashes when concatenating paths
+                    current_dir="${current_dir%/}/${selected_item}"
                 else
-                    echo "Opening $current_dir/$selected_item with nano..."
+                    # Fix: Ensure we don't add double slashes when opening files
+                    local file_path="${current_dir%/}/${selected_item}"
+                    echo "Opening $file_path with nano..."
                     if [[ "$current_dir" == *"appdata"* ]]; then
                         echo "WARNING: You are editing files in the appdata directory."
                         echo "This directory contains sensitive permissions. Be careful with your changes."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
-                        sudo nano "$current_dir/$selected_item"
+                        sudo nano "$file_path"
                     else
-                        nano "$current_dir/$selected_item"
+                        nano "$file_path"
                     fi
                 fi
             else
@@ -174,33 +174,37 @@ manage_files() {
         elif [[ "$choice" == "c" ]]; then
             read -p "Enter new file name: " new_file
             if [[ -n "$new_file" ]]; then
+                # Fix: Ensure we don't add double slashes when creating files
+                local file_path="${current_dir%/}/${new_file}"
                 if [[ "$current_dir" == *"appdata"* ]]; then
                     echo "WARNING: You are creating a file in the appdata directory."
                     echo "This directory contains sensitive permissions. Be careful with your changes."
                     read -p "Press Enter to continue or Ctrl+C to cancel..."
-                    sudo touch "$current_dir/$new_file"
-                    sudo chmod 600 "$current_dir/$new_file"
+                    sudo touch "$file_path"
+                    sudo chmod 600 "$file_path"
                     if [ -n "$rootless_user" ]; then
-                        podman unshare chown "$rootless_user:$rootless_user" "$current_dir/$new_file"
+                        podman unshare chown "$rootless_user:$rootless_user" "$file_path"
                     fi
                 else
-                    touch "$current_dir/$new_file"
+                    touch "$file_path"
                 fi
-                echo "File $current_dir/$new_file created."
+                echo "File $file_path created."
                 sleep 2
             fi
         elif [[ "$choice" == "d" ]]; then
             read -p "Enter file/directory name to delete: " delete_item
             if [[ -n "$delete_item" ]]; then
+                # Fix: Ensure we don't add double slashes when deleting files
+                local item_path="${current_dir%/}/${delete_item}"
                 if [[ "$current_dir" == *"appdata"* ]]; then
                     echo "WARNING: You are deleting a file/directory in the appdata directory."
                     echo "This directory contains sensitive permissions. Be careful with your changes."
                     read -p "Press Enter to continue or Ctrl+C to cancel..."
-                    sudo rm -rf "$current_dir/$delete_item"
+                    sudo rm -rf "$item_path"
                 else
-                    rm -rf "$current_dir/$delete_item"
+                    rm -rf "$item_path"
                 fi
-                echo "Deleted $current_dir/$delete_item"
+                echo "Deleted $item_path"
                 sleep 2
             fi
         else
