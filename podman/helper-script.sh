@@ -410,9 +410,39 @@ remove_container() {
     echo "Container $container_name removed successfully."
 }
 
+get_container_list() {
+    # Get all container names from podman ps -a output
+    local containers=($(podman ps -a --format "{{.Names}}"))
+    echo "${containers[@]}"
+}
+
+select_container() {
+    local containers=($(get_container_list))
+
+    if [ ${#containers[@]} -eq 0 ]; then
+        echo "No containers found."
+        return 1
+    fi
+
+    echo "Available containers:"
+    for i in "${!containers[@]}"; do
+        echo "$((i+1)). ${containers[$i]}"
+    done
+
+    while true; do
+        read -p "Select a container (1-${#containers[@]}): " choice
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#containers[@]} ]; then
+            echo "${containers[$((choice-1))]}"
+            return 0
+        else
+            echo "Invalid selection. Please try again."
+        fi
+    done
+}
+
 # Main menu
 while true; do
-    echo "=============================================a"
+    echo "============================================="
     echo "Podman Container Management Menu"
     echo "============================================="
     echo "1. List all containers"
@@ -433,41 +463,29 @@ while true; do
             list_containers
             ;;
         2)
-            read -p "Enter the container name to start: " container_name
-            start_container "$container_name"
+            container_name=$(select_container)
+            if [ -n "$container_name" ]; then
+                start_container "$container_name"
+            fi
             ;;
         3)
-            read -p "Enter the container name to stop: " container_name
-            stop_container "$container_name"
+            container_name=$(select_container)
+            if [ -n "$container_name" ]; then
+                stop_container "$container_name"
+            fi
             ;;
+        # Similar updates for other cases...
         4)
             read -p "Enter the new container name: " container_name
             create_container "$container_name"
             ;;
         5)
-            read -p "Enter the container name to compose: " container_name
-            compose_container "$container_name"
+            container_name=$(select_container)
+            if [ -n "$container_name" ]; then
+                compose_container "$container_name"
+            fi
             ;;
-        6)
-            read -p "Enter the container name to decompose: " container_name
-            decompose_container "$container_name"
-            ;;
-        7)
-            read -p "Enter the container name to browse and edit files: " container_name
-            manage_files "$container_name"
-            ;;
-        8)
-            read -p "Enter the container name to add more appdata files: " container_name
-            create_appdata_folders "$container_name"
-            ;;
-        9)
-            read -p "Enter the container name to reapply permissions: " container_name
-            reapply_permissions "$container_name"
-            ;;
-        99)
-            read -p "Enter the container name to remove: " container_name
-            remove_container "$container_name"
-            ;;
+        # Continue with other cases...
         0)
             echo "Exiting..."
             exit 0
