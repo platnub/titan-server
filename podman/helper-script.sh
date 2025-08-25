@@ -1,12 +1,10 @@
 #!/bin/bash
 base_dir="/home/podman/containers"
-
 # Function to list all containers
 list_containers() {
     echo "Listing all Podman containers:"
     podman ps -a
 }
-
 # Function to wait for container to be fully running
 wait_for_container_running() {
     local container_name=$1
@@ -49,7 +47,6 @@ wait_for_container_running() {
     podman logs "$container_name" 2>&1
     return 1
 }
-
 # Function to run a container
 start_container() {
     local container_name=$1
@@ -75,7 +72,6 @@ start_container() {
     update_rootless_user "$container_name"
     echo "Container $container_name started successfully."
 }
-
 # Function to stop a container
 stop_container() {
     local container_name=$1
@@ -86,11 +82,23 @@ stop_container() {
     podman stop "$container_name"
     echo "Container $container_name stopped successfully."
 }
-
 # Function to create new folders in appdata
 create_appdata_folders() {
     local container_name=$1
     local appdata_dir="$base_dir/$container_name/appdata"
+
+    # Check if we're in the appdata directory
+    if [[ "$appdata_dir" == *"appdata"* ]]; then
+        echo "WARNING: You are about to edit files in the appdata directory."
+        echo "This directory contains sensitive permissions settings."
+        echo "The script will do its best to maintain proper permissions, but be cautious."
+        read -p "Are you sure you want to continue? (y/n): " confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            echo "Operation cancelled."
+            return 1
+        fi
+    fi
+
     echo "Checking for new folders to create in $appdata_dir..."
     while true; do
         read -p "Enter a folder name to create in appdata (leave empty to finish): " folder_name
@@ -108,116 +116,125 @@ create_appdata_folders() {
         fi
     done
 }
-
 # Function to create/delete files
-manage_files() {
+create_delete_files() {
     local container_name=$1
     local container_dir="$base_dir/$container_name"
     local current_dir="$container_dir"
 
-    # Check if nano is installed
-    if ! command -v nano &> /dev/null; then
-        echo "nano is not installed. Please install it first."
-        read -p "Do you want to install nano now? (y/n): " install_nano
-        if [[ "$install_nano" =~ ^[Yy]$ ]]; then
-            sudo apt-get update && sudo apt-get upgrade -y
-            sudo apt-get install -y nano
-            echo "nano installed successfully."
-        else
-            echo "Cannot proceed without nano. Exiting..."
+    # Check if we're in the appdata directory
+    if [[ "$current_dir" == *"appdata"* ]]; then
+        echo "WARNING: You are about to edit files in the appdata directory."
+        echo "This directory contains sensitive permissions settings."
+        echo "The script will do its best to maintain proper permissions, but be cautious."
+        read -p "Are you sure you want to continue? (y/n): " confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            echo "Operation cancelled."
             return 1
         fi
     fi
 
     while true; do
-        clear  # Clear the screen for a cleaner UI
+        clear
         echo "============================================="
         echo "Current Directory: $current_dir"
         echo "============================================="
         echo "Files and Directories:"
         echo "============================================="
+
         # List files and directories, including hidden files
-        local items=($(ls -pA "$current_dir"))
-        for i in "${!items[@]}"; do
-            echo "$((i + 1)). ${items[$i]}"
-        done
+        local items=($(ls -pA "$current_dir" 2>/dev/null))
+        if [ ${#items[@]} -eq 0 ]; then
+            echo "No files or directories found."
+        else
+            for i in "${!items[@]}"; do
+                echo "$((i + 1)). ${items[$i]}"
+            done
+        fi
+
         echo "============================================="
         echo "Options:"
         echo "============================================="
         echo "0. Go back to previous directory"
-        echo "c. Create new file"
-        echo "d. Delete file/directory"
+        echo "1. Create a new file"
+        echo "2. Delete a file or directory"
         echo "99. Exit file manager"
         echo "============================================="
-        read -p "Enter your choice (1-${#items[@]}, 0, c, d, or 99): " choice
+        read -p "Enter your choice (0-2, or 99): " choice
 
-        if [[ "$choice" =~ ^[0-9]+$ ]]; then
-            if [ "$choice" -eq 0 ]; then
+        case $choice in
+            0)
                 # Go back to previous directory
                 if [ "$current_dir" != "$container_dir" ]; then
                     current_dir=$(dirname "$current_dir")
                 else
                     echo "Already at the root directory of the container."
-                    sleep 2  # Pause to let the user see the message
+                    sleep 2
                 fi
-            elif [ "$choice" -eq 99 ]; then
+                ;;
+            1)
+                # Create a new file
+                read -p "Enter the name of the new file: " new_file
+                if [[ -z "$new_file" ]]; then
+                    echo "File name cannot be empty."
+                    sleep 2
+                else
+                    sudo touch "$current_dir/$new_file"
+                    echo "File created: $current_dir/$new_file"
+                    # Apply permissions
+                    sudo chmod 600 "$current_dir/$new_file"
+                    if [ -n "$rootless_user" ]; then
+                        podman unshare chown "$rootless_user:$rootless_user" "$current_dir/$new_file"
+                    fi
+                    sleep 2
+                fi
+                ;;
+            2)
+                # Delete a file or directory
+                if [ ${#items[@]} -eq 0 ]; then
+                    echo "No files or directories to delete."
+                    sleep 2
+                else
+                    read -p "Enter the number of the file/directory to delete (1-${#items[@]}): " delete_choice
+                    if [[ "$delete_choice" =~ ^[0-9]+$ ]] && [ "$delete_choice" -ge 1 ] && [ "$delete_choice" -le "${#items[@]}" ]; then
+                        local selected_item="${items[$((delete_choice - 1))]}"
+                        read -p "Are you sure you want to delete '$selected_item'? (y/n): " confirm_delete
+                        if [[ "$confirm_delete" =~ ^[Yy]$ ]]; then
+                            sudo rm -rf "$current_dir/$selected_item"
+                            echo "Deleted: $current_dir/$selected_item"
+                            sleep 2
+                        else
+                            echo "Deletion cancelled."
+                            sleep 2
+                        fi
+                    else
+                        echo "Invalid choice. Please enter a valid number."
+                        sleep 2
+                    fi
+                fi
+                ;;
+            99)
                 # Exit file manager
                 break
-            elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#items[@]}" ]; then
-                # Selected a file or directory
-                local selected_item="${items[$((choice - 1))]}"
-                if [ -d "$current_dir/$selected_item" ]; then
-                    # It's a directory, navigate into it
-                    current_dir="$current_dir/$selected_item"
-                else
-                    # It's a file, open it with nano
-                    echo "Opening $current_dir/$selected_item with nano..."
-                    sudo nano "$current_dir/$selected_item"
-                fi
-            else
-                echo "Invalid choice. Please enter a valid number."
-                sleep 2  # Pause to let the user see the message
-            fi
-        elif [[ "$choice" == "c" ]]; then
-            # Create new file
-            read -p "Enter the name of the new file: " new_file
-            if [[ -n "$new_file" ]]; then
-                sudo touch "$current_dir/$new_file"
-                echo "Created file: $current_dir/$new_file"
-                read -p "Do you want to edit the new file now? (y/n): " edit_now
-                if [[ "$edit_now" =~ ^[Yy]$ ]]; then
-                    sudo nano "$current_dir/$new_file"
-                fi
-            else
-                echo "File name cannot be empty."
-                sleep 2
-            fi
-        elif [[ "$choice" == "d" ]]; then
-            # Delete file/directory
-            read -p "Enter the name of the file/directory to delete: " delete_item
-            if [[ -n "$delete_item" ]]; then
-                if [ -e "$current_dir/$delete_item" ]; then
-                    read -p "Are you sure you want to delete $current_dir/$delete_item? (y/n): " confirm_delete
-                    if [[ "$confirm_delete" =~ ^[Yy]$ ]]; then
-                        sudo rm -rf "$current_dir/$delete_item"
-                        echo "Deleted: $current_dir/$delete_item"
+                ;;
+            *)
+                # Navigate into directory if selected
+                if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#items[@]}" ]; then
+                    local selected_item="${items[$((choice - 1))]}"
+                    if [ -d "$current_dir/$selected_item" ]; then
+                        current_dir="$current_dir/$selected_item"
                     else
-                        echo "Deletion cancelled."
+                        echo "Selected item is not a directory."
+                        sleep 2
                     fi
                 else
-                    echo "File/directory does not exist: $current_dir/$delete_item"
+                    echo "Invalid choice. Please enter a valid number."
+                    sleep 2
                 fi
-            else
-                echo "Item name cannot be empty."
-                sleep 2
-            fi
-        else
-            echo "Invalid input. Please enter a number, 'c', 'd', or '99'."
-            sleep 2  # Pause to let the user see the message
-        fi
+                ;;
+        esac
     done
 }
-
 # Function to decompose a container (stop and remove containers)
 decompose_container() {
     local container_name=$1
@@ -226,7 +243,6 @@ decompose_container() {
     podman-compose --file "$base_dir/$container_name/compose.yaml" down
     echo "Container $container_name decomposed successfully."
 }
-
 # Function to compose a container (start containers)
 compose_container() {
     local container_name=$1
@@ -241,7 +257,6 @@ compose_container() {
     update_rootless_user "$container_name"
     echo "Container $container_name composed successfully."
 }
-
 # Function to create a new container
 create_container() {
     local container_name=$1
@@ -268,7 +283,6 @@ create_container() {
         compose_container "$container_name"
     fi
 }
-
 # Apply user permissions
 reapply_permissions() {
     local container_name=$1
@@ -291,7 +305,6 @@ reapply_permissions() {
     fi
     echo "Permissions applied successfully."
 }
-
 # Load rootless_user from .env
 load_rootless_user() {
     local container_name=$1
@@ -318,7 +331,6 @@ load_rootless_user() {
     rootless_user="$val"
     export rootless_user
 }
-
 # Function to update rootless_user in .env with retry logic
 update_rootless_user() {
     local container_name=$1
@@ -368,19 +380,22 @@ update_rootless_user() {
     fi
     echo "Updated rootless_user in .env"
 }
-
 # Function to browse and edit files using a simple menu
 browse_and_edit_files() {
     local container_name=$1
     local container_dir="$base_dir/$container_name"
     local current_dir="$container_dir"
 
-    # Check if we're in an appdata directory
+    # Check if we're in the appdata directory
     if [[ "$current_dir" == *"appdata"* ]]; then
-        echo "WARNING: You are editing files in the appdata directory."
-        echo "These folders are permissions sensitive. This script does its best to fix permissions,"
-        echo "but be warned that incorrect changes could cause issues with your container."
-        read -p "Press Enter to continue or Ctrl+C to cancel..."
+        echo "WARNING: You are about to edit files in the appdata directory."
+        echo "This directory contains sensitive permissions settings."
+        echo "The script will do its best to maintain proper permissions, but be cautious."
+        read -p "Are you sure you want to continue? (y/n): " confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            echo "Operation cancelled."
+            return 1
+        fi
     fi
 
     # Check if nano is installed
@@ -449,7 +464,6 @@ browse_and_edit_files() {
         fi
     done
 }
-
 # Function to remove a container
 remove_container() {
     local container_name=$1
@@ -470,7 +484,6 @@ remove_container() {
     fi
     echo "Container $container_name removed successfully."
 }
-
 # Main menu
 while true; do
     echo "============================================="
@@ -485,7 +498,7 @@ while true; do
     echo "7. Browse and edit files"
     echo "8. Add more appdata files"
     echo "9. Reapply permissions to a container"
-    echo "10. Manage files (create/delete)"
+    echo "10. Create/delete files"
     echo "99. Remove a container"
     echo "0. Exit"
     echo "============================================="
@@ -527,8 +540,8 @@ while true; do
             reapply_permissions "$container_name"
             ;;
         10)
-            read -p "Enter the container name to manage files: " container_name
-            manage_files "$container_name"
+            read -p "Enter the container name to create/delete files: " container_name
+            create_delete_files "$container_name"
             ;;
         99)
             read -p "Enter the container name to remove: " container_name
