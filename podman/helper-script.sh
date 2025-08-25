@@ -11,13 +11,13 @@ choose_container() {
 
     echo "Available containers:"
     for i in "${!containers[@]}"; do
-        echo "$((i + 1)). ${containers[$i]}"
+        echo "$((i+1)). ${containers[$i]}"
     done
 
     while true; do
-        read -p "Enter the number of the container you want to select: " choice
+        read -p "Select a container (1-${#containers[@]}): " choice
         if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#containers[@]}" ]; then
-            echo "${containers[$((choice - 1))]}"
+            echo "${containers[$((choice-1))]}"
             return 0
         else
             echo "Invalid choice. Please enter a number between 1 and ${#containers[@]}."
@@ -435,7 +435,7 @@ remove_container() {
 
 # Main menu
 while true; do
-    echo "=============================================a"
+    echo "============================================="
     echo "Podman Container Management Menu"
     echo "============================================="
     echo "1. List all containers"
