@@ -156,8 +156,8 @@ create_delete_files() {
         echo "Options:"
         echo "============================================="
         echo "0. Go back to previous directory"
-        echo "1. Create a new file"
-        echo "2. Delete a file or directory"
+        echo "c. Create a new file"
+        echo "d. Delete a file or directory"
         echo "99. Exit file manager"
         echo "============================================="
         read -p "Enter your choice (0-2, or 99): " choice
@@ -172,7 +172,7 @@ create_delete_files() {
                     sleep 2
                 fi
                 ;;
-            1)
+            c)
                 # Create a new file
                 read -p "Enter the name of the new file: " new_file
                 if [[ -z "$new_file" ]]; then
@@ -189,7 +189,7 @@ create_delete_files() {
                     sleep 2
                 fi
                 ;;
-            2)
+            d)
                 # Delete a file or directory
                 if [ ${#items[@]} -eq 0 ]; then
                     echo "No files or directories to delete."
