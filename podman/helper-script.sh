@@ -87,11 +87,25 @@ stop_container() {
     echo "Container $container_name stopped successfully."
 }
 
-# Function to create/delete files
-create_delete_files() {
+# Function to manage files (browse, edit, create, delete)
+manage_files() {
     local container_name=$1
     local container_dir="$base_dir/$container_name"
     local current_dir="$container_dir"
+
+    # Check if nano is installed
+    if ! command -v nano &> /dev/null; then
+        echo "nano is not installed. Please install it first."
+        read -p "Do you want to install nano now? (y/n): " install_nano
+        if [[ "$install_nano" =~ ^[Yy]$ ]]; then
+            sudo apt-get update && sudo apt-get upgrade -y
+            sudo apt-get install -y nano
+            echo "nano installed successfully."
+        else
+            echo "Cannot proceed without nano. Exiting..."
+            return 1
+        fi
+    fi
 
     while true; do
         clear
@@ -127,6 +141,12 @@ create_delete_files() {
             elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#items[@]}" ]; then
                 local selected_item="${items[$((choice - 1))]}"
                 if [ -d "$current_dir/$selected_item" ]; then
+                    if [[ "$current_dir/$selected_item" == *"appdata"* ]]; then
+                        echo "WARNING: You are entering the appdata directory."
+                        echo "This directory contains sensitive permissions. Be careful with your changes."
+                        echo "This operation requires sudo rights."
+                        read -p "Press Enter to continue or Ctrl+C to cancel..."
+                    fi
                     current_dir="$current_dir/$selected_item"
                 else
                     echo "Opening $current_dir/$selected_item with nano..."
@@ -233,7 +253,7 @@ create_container() {
     # Create compose.yaml
     sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
     # Create .env file
-    sudo sh -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
+    sudo sh -c "echo \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
     # Ask to create new folders in appdata
     read -p "Do you want to create any new folders in the appdata directory? (y/n): " create_folders
@@ -349,85 +369,6 @@ update_rootless_user() {
     echo "Updated rootless_user in .env"
 }
 
-# Function to browse and edit files using a simple menu
-browse_and_edit_files() {
-    local container_name=$1
-    local container_dir="$base_dir/$container_name"
-    local current_dir="$container_dir"
-
-    # Check if nano is installed
-    if ! command -v nano &> /dev/null; then
-        echo "nano is not installed. Please install it first."
-        read -p "Do you want to install nano now? (y/n): " install_nano
-        if [[ "$install_nano" =~ ^[Yy]$ ]]; then
-            sudo apt-get update && sudo apt-get upgrade -y
-            sudo apt-get install -y nano
-            echo "nano installed successfully."
-        else
-            echo "Cannot proceed without nano. Exiting..."
-            return 1
-        fi
-    fi
-
-    while true; do
-        clear
-        echo "============================================="
-        echo "Current Directory: $current_dir"
-        echo "============================================="
-        echo "Files and Directories:"
-        echo "============================================="
-        local items=($(ls -pA "$current_dir" 2>/dev/null))
-        for i in "${!items[@]}"; do
-            echo "$((i + 1)). ${items[$i]}"
-        done
-        echo "============================================="
-        echo "Options:"
-        echo "============================================="
-        echo "0. Go back to previous directory"
-        echo "99. Exit file browser"
-        echo "============================================="
-        read -p "Enter your choice (1-${#items[@]}, 0, or 99): " choice
-
-        if [[ "$choice" =~ ^[0-9]+$ ]]; then
-            if [ "$choice" -eq 0 ]; then
-                if [ "$current_dir" != "$container_dir" ]; then
-                    current_dir=$(dirname "$current_dir")
-                else
-                    echo "Already at the root directory of the container."
-                    sleep 2
-                fi
-            elif [ "$choice" -eq 99 ]; then
-                break
-            elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#items[@]}" ]; then
-                local selected_item="${items[$((choice - 1))]}"
-                if [ -d "$current_dir/$selected_item" ]; then
-                    if [[ "$current_dir/$selected_item" == *"appdata"* ]]; then
-                        echo "WARNING: You are entering the appdata directory."
-                        echo "This directory contains sensitive permissions. Be careful with your changes."
-                        echo "This operation requires sudo rights."
-                        read -p "Press Enter to continue or Ctrl+C to cancel..."
-                    fi
-                    current_dir="$current_dir/$selected_item"
-                else
-                    echo "Opening $current_dir/$selected_item with nano..."
-                    if [[ "$current_dir" == *"appdata"* ]]; then
-                        echo "WARNING: You are editing files in the appdata directory."
-                        echo "This directory contains sensitive permissions. Be careful with your changes."
-                        read -p "Press Enter to continue or Ctrl+C to cancel..."
-                    fi
-                    sudo nano "$current_dir/$selected_item"
-                fi
-            else
-                echo "Invalid choice. Please enter a valid number."
-                sleep 2
-            fi
-        else
-            echo "Invalid input. Please enter a number."
-            sleep 2
-        fi
-    done
-}
-
 # Function to remove a container
 remove_container() {
     local container_name=$1
@@ -493,7 +434,7 @@ while true; do
             ;;
         7)
             read -p "Enter the container name to browse and edit files: " container_name
-            browse_and_edit_files "$container_name"
+            manage_files "$container_name"
             ;;
         8)
             read -p "Enter the container name to add more appdata files: " container_name
