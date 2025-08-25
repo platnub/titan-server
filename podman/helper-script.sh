@@ -1,10 +1,31 @@
 #!/bin/bash
+# Script: Podman Container Management
+# Description: A comprehensive script to manage Podman containers with proper error handling and user feedback
+# Author: [Your Name]
+# Version: 1.0
+
+# Base directory for all container data
 base_dir="/home/podman/containers"
+
+# Function to display error messages in red
+error_msg() {
+    echo -e "\033[1;31m[ERROR] $1\033[0m" >&2
+}
+
+# Function to display warning messages in yellow
+warning_msg() {
+    echo -e "\033[1;33m[WARNING] $1\033[0m"
+}
+
+# Function to display informational messages in green
+info_msg() {
+    echo -e "\033[1;32m[INFO] $1\033[0m"
+}
 
 # Function to list all containers
 list_containers() {
-    echo "Listing all Podman containers:"
-    podman ps -a
+    info_msg "Listing all Podman containers:"
+    podman ps -a || error_msg "Failed to list containers. Check if Podman is running."
 }
 
 # Function to wait for container to be fully running
@@ -14,77 +35,120 @@ wait_for_container_running() {
     local attempt=0
     local status
     local health_status
-    echo "Waiting for container $container_name to be fully running..."
+
+    info_msg "Waiting for container $container_name to be fully running..."
+
     while [ $attempt -lt $max_attempts ]; do
         # Get container status
         status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
+
         if [ "$status" = "running" ]; then
             # Check if the container has a health check
             health_status=$(podman inspect -f '{{.State.Health.Status}}' "$container_name" 2>/dev/null)
+
             if [ -n "$health_status" ] && [ "$health_status" != "healthy" ]; then
                 # If there's a health check but it's not healthy yet
-                echo "Container $container_name is running but health check is $health_status..."
+                warning_msg "Container $container_name is running but health check is $health_status..."
             else
                 # Either no health check or it's healthy
-                echo "Container $container_name is running and healthy."
+                info_msg "Container $container_name is running and healthy."
                 return 0
             fi
         elif [ "$status" = "exited" ] || [ "$status" = "dead" ]; then
-            echo "Container $container_name is in $status state."
+            error_msg "Container $container_name is in $status state."
+
             # Get exit code for more detailed error
             exit_code=$(podman inspect -f '{{.State.ExitCode}}' "$container_name" 2>/dev/null)
+
             if [ -n "$exit_code" ] && [ "$exit_code" -ne 0 ]; then
-                echo "Container exited with code $exit_code"
+                error_msg "Container exited with code $exit_code"
                 echo "Container logs:"
-                podman logs "$container_name" 2>&1
+                podman logs "$container_name" 2>&1 || warning_msg "Could not retrieve container logs."
             fi
             return 1
         fi
+
         attempt=$((attempt + 1))
         sleep 2
     done
-    echo "Timeout waiting for container $container_name to start."
+
+    error_msg "Timeout waiting for container $container_name to start."
     echo "Current status: $status"
     echo "Container logs:"
-    podman logs "$container_name" 2>&1
+    podman logs "$container_name" 2>&1 || warning_msg "Could not retrieve container logs."
     return 1
 }
 
 # Function to run a container
 start_container() {
     local container_name=$1
-    reapply_permissions "$container_name"
+
+    # Check if container exists
+    if ! podman inspect "$container_name" &>/dev/null; then
+        error_msg "Container $container_name does not exist."
+        return 1
+    fi
+
+    reapply_permissions "$container_name" || {
+        error_msg "Failed to reapply permissions for $container_name"
+        return 1
+    }
+
     # Start the container
-    echo "Starting container $container_name..."
-    podman start "$container_name"
+    info_msg "Starting container $container_name..."
+    if ! podman start "$container_name"; then
+        error_msg "Failed to start container $container_name"
+        return 1
+    fi
+
     # Wait for the container to be fully running
     if ! wait_for_container_running "$container_name"; then
-        echo "Error: Container $container_name did not start properly."
+        error_msg "Container $container_name did not start properly."
+
         # Check container logs for errors
         echo "Container logs:"
-        podman logs "$container_name" 2>&1
+        podman logs "$container_name" 2>&1 || warning_msg "Could not retrieve container logs."
+
         # Try to restart the container if it failed
-        echo "Attempting to restart container $container_name..."
-        podman restart "$container_name"
+        warning_msg "Attempting to restart container $container_name..."
+        if ! podman restart "$container_name"; then
+            error_msg "Failed to restart container $container_name"
+            return 1
+        fi
+
         # Wait again
         if ! wait_for_container_running "$container_name"; then
-            echo "Error: Container $container_name failed to start after restart."
+            error_msg "Container $container_name failed to start after restart."
             return 1
         fi
     fi
-    update_rootless_user "$container_name"
-    echo "Container $container_name started successfully."
+
+    update_rootless_user "$container_name" || warning_msg "Failed to update rootless user for $container_name"
+    info_msg "Container $container_name started successfully."
 }
 
 # Function to stop a container
 stop_container() {
     local container_name=$1
+
+    # Check if container exists
+    if ! podman inspect "$container_name" &>/dev/null; then
+        error_msg "Container $container_name does not exist."
+        return 1
+    fi
+
     # Only update .env if this was called from option 3 in the menu
     if [[ "$choice" == "3" ]]; then
-        update_rootless_user "$container_name"
+        update_rootless_user "$container_name" || warning_msg "Failed to update rootless user for $container_name"
     fi
-    podman stop "$container_name"
-    echo "Container $container_name stopped successfully."
+
+    info_msg "Stopping container $container_name..."
+    if ! podman stop "$container_name"; then
+        error_msg "Failed to stop container $container_name"
+        return 1
+    fi
+
+    info_msg "Container $container_name stopped successfully."
 }
 
 # Function to manage files (browse, edit, create, delete)
@@ -92,19 +156,30 @@ manage_files() {
     local container_name=$1
     local container_dir="$base_dir/$container_name"
     local current_dir="$container_dir"
+
+    # Check if container exists
+    if [ ! -d "$container_dir" ]; then
+        error_msg "Container directory $container_dir does not exist."
+        return 1
+    fi
+
     # Check if nano is installed
     if ! command -v nano &> /dev/null; then
-        echo "nano is not installed. Please install it first."
+        warning_msg "nano is not installed. Please install it first."
         read -p "Do you want to install nano now? (y/n): " install_nano
         if [[ "$install_nano" =~ ^[Yy]$ ]]; then
-            sudo apt-get update && sudo apt-get upgrade -y
-            sudo apt-get install -y nano
-            echo "nano installed successfully."
+            info_msg "Installing nano..."
+            if ! (sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get install -y nano); then
+                error_msg "Failed to install nano."
+                return 1
+            fi
+            info_msg "nano installed successfully."
         else
-            echo "Cannot proceed without nano. Exiting..."
+            error_msg "Cannot proceed without nano. Exiting..."
             return 1
         fi
     fi
+
     while true; do
         clear
         echo "============================================="
@@ -112,13 +187,20 @@ manage_files() {
         echo "============================================="
         echo "Files and Directories:"
         echo "============================================="
+
         # List files and directories with proper sudo for appdata
         if [[ "$current_dir" == *"appdata"* ]]; then
-            local items=($(sudo ls -lA "$current_dir" 2>/dev/null | awk '{print $9}'))
+            local items=($(sudo ls -lA "$current_dir" 2>/dev/null | awk '{print $9}')) || {
+                error_msg "Failed to list directory contents in $current_dir"
+                break
+            }
         else
-            local items=($(ls -lA "$current_dir" 2>/dev/null | awk '{print $9}'))
+            local items=($(ls -lA "$current_dir" 2>/dev/null | awk '{print $9}')) || {
+                error_msg "Failed to list directory contents in $current_dir"
+                break
+            }
         fi
-        
+
         # Display files and directories with / appended to directories
         for i in "${!items[@]}"; do
             local item="${items[$i]}"
@@ -127,7 +209,7 @@ manage_files() {
             else
                 local item_type=$(ls -ld "$current_dir/$item" 2>/dev/null | awk '{print $1}')
             fi
-        
+
             if [[ "$item_type" == d* ]]; then
                 # It's a directory - append /
                 echo "$((i + 1)). ${item}/"
@@ -146,6 +228,7 @@ manage_files() {
         echo "99. Exit file manager"
         echo "============================================="
         read -p "Enter your choice (1-${#items[@]}, 0, c, d, or 99): " choice
+
         if [[ "$choice" =~ ^[0-9]+$ ]]; then
             if [ "$choice" -eq 0 ]; then
                 if [ "$current_dir" != "$container_dir" ]; then
@@ -154,7 +237,7 @@ manage_files() {
                     # Ensure we don't end up with double slashes
                     current_dir=${current_dir%/}
                 else
-                    echo "Already at the root directory of the container."
+                    warning_msg "Already at the root directory of the container."
                     sleep 2
                 fi
             elif [ "$choice" -eq 99 ]; then
@@ -167,12 +250,13 @@ manage_files() {
                 else
                     local item_type=$(ls -ld "$current_dir/$selected_item" 2>/dev/null | awk '{print $1}')
                 fi
+
                 if [[ "$item_type" == d* ]]; then
                     # It's a directory
                     if [[ "$current_dir/$selected_item" == *"appdata"* ]]; then
-                        echo "WARNING: You are entering the appdata directory."
-                        echo "This directory contains sensitive permissions. Be careful with your changes."
-                        echo "This operation requires sudo rights."
+                        warning_msg "WARNING: You are entering the appdata directory."
+                        warning_msg "This directory contains sensitive permissions. Be careful with your changes."
+                        warning_msg "This operation requires sudo rights."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
                     fi
                     # Fix: Ensure we don't add double slashes when concatenating paths
@@ -181,18 +265,19 @@ manage_files() {
                     # It's a file
                     # Fix: Ensure we don't add double slashes when opening files
                     local file_path="${current_dir%/}/${selected_item}"
-                    echo "Opening $file_path with nano..."
+                    info_msg "Opening $file_path with nano..."
+
                     if [[ "$current_dir" == *"appdata"* ]]; then
-                        echo "WARNING: You are editing files in the appdata directory."
-                        echo "This directory contains sensitive permissions. Be careful with your changes."
+                        warning_msg "WARNING: You are editing files in the appdata directory."
+                        warning_msg "This directory contains sensitive permissions. Be careful with your changes."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
-                        sudo nano "$file_path"
+                        sudo nano "$file_path" || error_msg "Failed to open file with nano."
                     else
-                        nano "$file_path"
+                        nano "$file_path" || error_msg "Failed to open file with nano."
                     fi
                 fi
             else
-                echo "Invalid choice. Please enter a valid number."
+                error_msg "Invalid choice. Please enter a valid number."
                 sleep 2
             fi
         elif [[ "$choice" == "c" ]]; then
@@ -200,19 +285,30 @@ manage_files() {
             if [[ -n "$new_file" ]]; then
                 # Fix: Ensure we don't add double slashes when creating files
                 local file_path="${current_dir%/}/${new_file}"
+
                 if [[ "$current_dir" == *"appdata"* ]]; then
-                    echo "WARNING: You are creating a file in the appdata directory."
-                    echo "This directory contains sensitive permissions. Be careful with your changes."
+                    warning_msg "WARNING: You are creating a file in the appdata directory."
+                    warning_msg "This directory contains sensitive permissions. Be careful with your changes."
                     read -p "Press Enter to continue or Ctrl+C to cancel..."
-                    sudo touch "$file_path"
-                    sudo chmod 600 "$file_path"
+
+                    if ! (sudo touch "$file_path" && sudo chmod 600 "$file_path"); then
+                        error_msg "Failed to create file $file_path"
+                        continue
+                    fi
+
                     if [ -n "$rootless_user" ]; then
-                        podman unshare chown "$rootless_user:$rootless_user" "$file_path"
+                        if ! podman unshare chown "$rootless_user:$rootless_user" "$file_path"; then
+                            warning_msg "Failed to set ownership for $file_path"
+                        fi
                     fi
                 else
-                    touch "$file_path"
+                    if ! touch "$file_path"; then
+                        error_msg "Failed to create file $file_path"
+                        continue
+                    fi
                 fi
-                echo "File $file_path created."
+
+                info_msg "File $file_path created."
                 sleep 2
             fi
         elif [[ "$choice" == "d" ]]; then
@@ -220,19 +316,28 @@ manage_files() {
             if [[ -n "$delete_item" ]]; then
                 # Fix: Ensure we don't add double slashes when deleting files
                 local item_path="${current_dir%/}/${delete_item}"
+
                 if [[ "$current_dir" == *"appdata"* ]]; then
-                    echo "WARNING: You are deleting a file/directory in the appdata directory."
-                    echo "This directory contains sensitive permissions. Be careful with your changes."
+                    warning_msg "WARNING: You are deleting a file/directory in the appdata directory."
+                    warning_msg "This directory contains sensitive permissions. Be careful with your changes."
                     read -p "Press Enter to continue or Ctrl+C to cancel..."
-                    sudo rm -rf "$item_path"
+
+                    if ! sudo rm -rf "$item_path"; then
+                        error_msg "Failed to delete $item_path"
+                        continue
+                    fi
                 else
-                    rm -rf "$item_path"
+                    if ! rm -rf "$item_path"; then
+                        error_msg "Failed to delete $item_path"
+                        continue
+                    fi
                 fi
-                echo "Deleted $item_path"
+
+                info_msg "Deleted $item_path"
                 sleep 2
             fi
         else
-            echo "Invalid input. Please enter a number, 'c', 'd', or '99'."
+            error_msg "Invalid input. Please enter a number, 'c', 'd', or '99'."
             sleep 2
         fi
     done
@@ -241,102 +346,194 @@ manage_files() {
 # Function to decompose a container (stop and remove containers)
 decompose_container() {
     local container_name=$1
-    update_rootless_user "$container_name"
-    echo "Decomposing container $container_name..."
-    podman-compose --file "$base_dir/$container_name/compose.yaml" down
-    echo "Container $container_name decomposed successfully."
+
+    # Check if container exists
+    if ! podman inspect "$container_name" &>/dev/null; then
+        error_msg "Container $container_name does not exist."
+        return 1
+    fi
+
+    update_rootless_user "$container_name" || warning_msg "Failed to update rootless user for $container_name"
+
+    info_msg "Decomposing container $container_name..."
+    if ! podman-compose --file "$base_dir/$container_name/compose.yaml" down; then
+        error_msg "Failed to decompose container $container_name"
+        return 1
+    fi
+
+    info_msg "Container $container_name decomposed successfully."
 }
 
 # Function to compose a container (start containers)
 compose_container() {
     local container_name=$1
-    echo "Composing container $container_name..."
-    reapply_permissions "$container_name"
-    podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
-    # Wait for container to be running
-    if ! wait_for_container_running "$container_name"; then
-        echo "Error: Container $container_name did not start properly after composition."
+
+    # Check if container exists
+    if [ ! -d "$base_dir/$container_name" ]; then
+        error_msg "Container directory $base_dir/$container_name does not exist."
         return 1
     fi
-    update_rootless_user "$container_name"
-    echo "Container $container_name composed successfully."
+
+    info_msg "Composing container $container_name..."
+
+    reapply_permissions "$container_name" || {
+        error_msg "Failed to reapply permissions for $container_name"
+        return 1
+    }
+
+    if ! podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach; then
+        error_msg "Failed to compose container $container_name"
+        return 1
+    fi
+
+    # Wait for container to be running
+    if ! wait_for_container_running "$container_name"; then
+        error_msg "Container $container_name did not start properly after composition."
+        return 1
+    fi
+
+    update_rootless_user "$container_name" || warning_msg "Failed to update rootless user for $container_name"
+    info_msg "Container $container_name composed successfully."
 }
 
 # Function to create a new container
 create_container() {
     local container_name=$1
+
+    # Check if container already exists
+    if [ -d "$base_dir/$container_name" ]; then
+        warning_msg "Container directory $base_dir/$container_name already exists."
+        read -p "Do you want to overwrite it? (y/n): " overwrite
+        if [[ ! "$overwrite" =~ ^[Yy]$ ]]; then
+            info_msg "Container creation cancelled."
+            return 1
+        fi
+    fi
+
     # Create container directories
-    sudo mkdir -p "$base_dir/$container_name"
-    sudo mkdir -p "$base_dir/$container_name/appdata"
-    sudo mkdir -p "$base_dir/$container_name/logs"
-    sudo mkdir -p "$base_dir/$container_name/secrets"
+    info_msg "Creating container directories..."
+    if ! (sudo mkdir -p "$base_dir/$container_name" &&
+          sudo mkdir -p "$base_dir/$container_name/appdata" &&
+          sudo mkdir -p "$base_dir/$container_name/logs" &&
+          sudo mkdir -p "$base_dir/$container_name/secrets"); then
+        error_msg "Failed to create container directories"
+        return 1
+    fi
+
     # Create compose.yaml
-    sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
+    info_msg "Creating compose.yaml file..."
+    if ! sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"; then
+        error_msg "Failed to create compose.yaml file"
+        return 1
+    fi
+
     # Create .env file
-    sudo sh -c "echo \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
-    sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
+    info_msg "Creating .env file..."
+    if ! sudo sh -c "echo \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"; then
+        error_msg "Failed to create .env file"
+        return 1
+    fi
+
+    if ! sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"; then
+        error_msg "Failed to edit .env file"
+        return 1
+    fi
+
     # Ask to create new folders in appdata
     read -p "Do you want to create any new folders in the appdata directory? (y/n): " create_folders
     if [[ "$create_folders" =~ ^[Yy]$ ]]; then
-        create_appdata_folders "$container_name"
+        create_appdata_folders "$container_name" || warning_msg "Failed to create appdata folders"
     fi
-    reapply_permissions "$container_name"
-    echo "Container $container_name created successfully."
+
+    reapply_permissions "$container_name" || {
+        error_msg "Failed to reapply permissions for $container_name"
+        return 1
+    }
+
+    info_msg "Container $container_name created successfully."
+
     # Ask to run the container
     read -p "Do you want to compose the container now? (y/n): " compose_now
     if [[ "$compose_now" =~ ^[Yy]$ ]]; then
-        compose_container "$container_name"
+        compose_container "$container_name" || error_msg "Failed to compose container $container_name"
     fi
 }
 
 # Apply user permissions
 reapply_permissions() {
     local container_name=$1
+
+    # Check if container directory exists
+    if [ ! -d "$base_dir/$container_name" ]; then
+        error_msg "Container directory $base_dir/$container_name does not exist."
+        return 1
+    fi
+
+    info_msg "Applying permissions to container $container_name..."
+
     # Set directory permissions
-    sudo chmod 700 "$base_dir/$container_name"
-    sudo chmod 700 "$base_dir/$container_name/appdata"
-    sudo chmod 700 "$base_dir/$container_name/logs"
-    sudo chmod 400 "$base_dir/$container_name/secrets"
-    sudo chmod 400 "$base_dir/$container_name/compose.yaml"
-    sudo chmod 400 "$base_dir/$container_name/.env"
+    if ! (sudo chmod 700 "$base_dir/$container_name" &&
+          sudo chmod 700 "$base_dir/$container_name/appdata" &&
+          sudo chmod 700 "$base_dir/$container_name/logs" &&
+          sudo chmod 400 "$base_dir/$container_name/secrets" &&
+          sudo chmod 400 "$base_dir/$container_name/compose.yaml" &&
+          sudo chmod 400 "$base_dir/$container_name/.env"); then
+        error_msg "Failed to set directory permissions"
+        return 1
+    fi
+
     # Change ownership to podman user
-    sudo chown -R podman:podman "$base_dir/$container_name"
+    if ! sudo chown -R podman:podman "$base_dir/$container_name"; then
+        error_msg "Failed to change ownership to podman user"
+        return 1
+    fi
+
     # Load rootless_user if it exists
     if [ -f "$base_dir/$container_name/.env" ]; then
-        load_rootless_user "$container_name"
+        load_rootless_user "$container_name" || warning_msg "Failed to load rootless user from .env"
+
         if [ -n "$rootless_user" ]; then
             # Use podman unshare to change ownership inside the container's user namespace
-            podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"
+            if ! podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"; then
+                warning_msg "Failed to set appdata ownership for rootless user"
+            fi
         fi
     fi
-    echo "Permissions applied successfully."
+
+    info_msg "Permissions applied successfully."
 }
 
 # Load rootless_user from .env
 load_rootless_user() {
     local container_name=$1
     local env_file="$base_dir/$container_name/.env"
+
     if [[ ! -r "$env_file" ]]; then
-        echo "Cannot read $env_file" >&2
+        error_msg "Cannot read $env_file"
         return 1
     fi
+
     # Get the line rootless_user=...
     local line
     line=$(sudo grep -m1 -E '^[[:space:]]*rootless_user[[:space:]]*=' "$env_file") || {
-        echo "rootless_user not found in $env_file" >&2
+        error_msg "rootless_user not found in $env_file"
         return 1
     }
+
     # Extract value, strip inline comments/whitespace and surrounding quotes
     local val=${line#*=}
     val=${val%%#*}
     val=$(printf '%s\n' "$val" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
     val=$(printf '%s\n' "$val" | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/")
+
     if [[ -z "$val" ]]; then
-        echo "rootless_user value is empty in $env_file" >&2
+        error_msg "rootless_user value is empty in $env_file"
         return 1
     fi
+
     rootless_user="$val"
     export rootless_user
+    info_msg "Loaded rootless_user: $rootless_user"
 }
 
 # Function to update rootless_user in .env with retry logic
@@ -347,72 +544,165 @@ update_rootless_user() {
     local retry_delay=1
     local retry_count=0
     local podman_huser
+
     # First check if container is running
     if ! podman ps -l | grep -q "$container_name"; then
-        echo "Error: Container $container_name is not running. Cannot update rootless_user."
+        error_msg "Container $container_name is not running. Cannot update rootless_user."
         return 1
     fi
+
+    info_msg "Updating rootless_user for container $container_name..."
+
     while [ $retry_count -lt $max_retries ]; do
         # Get HUSER for user "abc"
         podman_huser=$(podman top "$container_name" user huser 2>/dev/null | awk 'NR>1 && $1=="abc" {print $2; exit}')
+
         if [ -n "$podman_huser" ]; then
             break
         fi
-        echo "Attempt $((retry_count + 1)): Could not determine HUSER for user 'abc' in container '$container_name'. Retrying in $retry_delay seconds..."
+
+        warning_msg "Attempt $((retry_count + 1)): Could not determine HUSER for user 'abc' in container '$container_name'. Retrying in $retry_delay seconds..."
         sleep $retry_delay
         retry_count=$((retry_count + 1))
     done
+
     if [ -z "$podman_huser" ]; then
-        echo "Failed to determine HUSER for user 'abc' in container '$container_name' after $max_retries attempts. Is the container running and does the user exist?"
+        error_msg "Failed to determine HUSER for user 'abc' in container '$container_name' after $max_retries attempts. Is the container running and does the user exist?"
         return 1
     fi
+
     if [ -e "$env_file" ]; then
         # Check if file is writable, if not make it writable temporarily
         if [ ! -w "$env_file" ]; then
-            sudo chmod u+w "$env_file"
+            if ! sudo chmod u+w "$env_file"; then
+                error_msg "Failed to make $env_file writable"
+                return 1
+            fi
         fi
+
         if grep -qE '^[[:space:]]*rootless_user=' "$env_file"; then
             # Update existing key
-            sudo sed -i -E "s|^[[:space:]]*rootless_user=.*|rootless_user=$podman_huser|" "$env_file"
+            if ! sudo sed -i -E "s|^[[:space:]]*rootless_user=.*|rootless_user=$podman_huser|" "$env_file"; then
+                error_msg "Failed to update rootless_user in $env_file"
+                return 1
+            fi
         else
             # Append the key
-            sudo sh -c "printf '\nrootless_user=%s\n' '$podman_huser' >> '$env_file'"
+            if ! sudo sh -c "printf '\nrootless_user=%s\n' '$podman_huser' >> '$env_file'"; then
+                error_msg "Failed to append rootless_user to $env_file"
+                return 1
+            fi
         fi
+
         # Restore original permissions if we changed them
         if [ ! -w "$env_file" ]; then
-            sudo chmod u-w "$env_file"
+            if ! sudo chmod u-w "$env_file"; then
+                warning_msg "Failed to restore original permissions for $env_file"
+            fi
         fi
     else
         # Create new file with the key
-        sudo sh -c "printf 'rootless_user=%s\n' '$podman_huser' > '$env_file'"
+        if ! sudo sh -c "printf 'rootless_user=%s\n' '$podman_huser' > '$env_file'"; then
+            error_msg "Failed to create $env_file with rootless_user"
+            return 1
+        fi
     fi
-    echo "Updated rootless_user in .env"
+
+    info_msg "Updated rootless_user in .env to $podman_huser"
 }
 
 # Function to remove a container
 remove_container() {
     local container_name=$1
+
+    # Check if container exists
+    if ! podman inspect "$container_name" &>/dev/null; then
+        error_msg "Container $container_name does not exist."
+        return 1
+    fi
+
     # Stop the container first
-    stop_container "$container_name"
+    stop_container "$container_name" || warning_msg "Failed to stop container $container_name"
+
     # Remove the container
-    podman rm "$container_name"
+    info_msg "Removing container $container_name..."
+    if ! podman rm "$container_name"; then
+        error_msg "Failed to remove container $container_name"
+        return 1
+    fi
+
     # Decompose the container
-    decompose_container "$container_name"
+    decompose_container "$container_name" || warning_msg "Failed to decompose container $container_name"
+
     # Ask to remove ALL container data
     read -p "Do you want to remove ALL container data from $container_name? (y/n): " remove_container_data
     if [[ "$remove_container_data" =~ ^[Yy]$ ]]; then
         read -p "!! Are you sure you want to remove ALL container data from $container_name? !! (y/n): " remove_container_data_sure
         if [[ "$remove_container_data_sure" =~ ^[Yy]$ ]]; then
-            sudo rm -rf "$base_dir/$container_name"
-            echo "ALL container data removed from $container_name."
+            warning_msg "Removing ALL container data from $container_name..."
+            if ! sudo rm -rf "$base_dir/$container_name"; then
+                error_msg "Failed to remove container data from $container_name"
+                return 1
+            fi
+            info_msg "ALL container data removed from $container_name."
         fi
     fi
-    echo "Container $container_name removed successfully."
+
+    info_msg "Container $container_name removed successfully."
+}
+
+# Function to create appdata folders
+create_appdata_folders() {
+    local container_name=$1
+    local appdata_dir="$base_dir/$container_name/appdata"
+
+    # Check if appdata directory exists
+    if [ ! -d "$appdata_dir" ]; then
+        error_msg "Appdata directory $appdata_dir does not exist."
+        return 1
+    fi
+
+    info_msg "Creating additional folders in appdata directory..."
+
+    while true; do
+        read -p "Enter folder name to create (or press Enter to finish): " folder_name
+
+        if [ -z "$folder_name" ]; then
+            break
+        fi
+
+        if [ -d "$appdata_dir/$folder_name" ]; then
+            warning_msg "Folder $folder_name already exists."
+            continue
+        fi
+
+        if ! sudo mkdir -p "$appdata_dir/$folder_name"; then
+            error_msg "Failed to create folder $folder_name"
+            continue
+        fi
+
+        info_msg "Created folder $folder_name in appdata directory."
+
+        # Set proper permissions
+        if ! sudo chmod 700 "$appdata_dir/$folder_name"; then
+            warning_msg "Failed to set permissions for $folder_name"
+        fi
+
+        # Set ownership if rootless_user is defined
+        if [ -n "$rootless_user" ]; then
+            if ! podman unshare chown "$rootless_user:$rootless_user" "$appdata_dir/$folder_name"; then
+                warning_msg "Failed to set ownership for $folder_name"
+            fi
+        fi
+    done
+
+    info_msg "Finished creating additional folders in appdata directory."
 }
 
 # Main menu
 while true; do
-    echo "=============================================a"
+    clear
+    echo "============================================="
     echo "Podman Container Management Menu"
     echo "============================================="
     echo "1. List all containers"
@@ -428,53 +718,91 @@ while true; do
     echo "0. Exit"
     echo "============================================="
     read -p "Enter your choice (0-9, 99): " choice
+
     case $choice in
         1)
             list_containers
             ;;
         2)
             read -p "Enter the container name to start: " container_name
-            start_container "$container_name"
+            if [ -z "$container_name" ]; then
+                error_msg "Container name cannot be empty."
+            else
+                start_container "$container_name"
+            fi
             ;;
         3)
             read -p "Enter the container name to stop: " container_name
-            stop_container "$container_name"
+            if [ -z "$container_name" ]; then
+                error_msg "Container name cannot be empty."
+            else
+                stop_container "$container_name"
+            fi
             ;;
         4)
             read -p "Enter the new container name: " container_name
-            create_container "$container_name"
+            if [ -z "$container_name" ]; then
+                error_msg "Container name cannot be empty."
+            else
+                create_container "$container_name"
+            fi
             ;;
         5)
             read -p "Enter the container name to compose: " container_name
-            compose_container "$container_name"
+            if [ -z "$container_name" ]; then
+                error_msg "Container name cannot be empty."
+            else
+                compose_container "$container_name"
+            fi
             ;;
         6)
             read -p "Enter the container name to decompose: " container_name
-            decompose_container "$container_name"
+            if [ -z "$container_name" ]; then
+                error_msg "Container name cannot be empty."
+            else
+                decompose_container "$container_name"
+            fi
             ;;
         7)
             read -p "Enter the container name to browse and edit files: " container_name
-            manage_files "$container_name"
+            if [ -z "$container_name" ]; then
+                error_msg "Container name cannot be empty."
+            else
+                manage_files "$container_name"
+            fi
             ;;
         8)
             read -p "Enter the container name to add more appdata files: " container_name
-            create_appdata_folders "$container_name"
+            if [ -z "$container_name" ]; then
+                error_msg "Container name cannot be empty."
+            else
+                create_appdata_folders "$container_name"
+            fi
             ;;
         9)
             read -p "Enter the container name to reapply permissions: " container_name
-            reapply_permissions "$container_name"
+            if [ -z "$container_name" ]; then
+                error_msg "Container name cannot be empty."
+            else
+                reapply_permissions "$container_name"
+            fi
             ;;
         99)
             read -p "Enter the container name to remove: " container_name
-            remove_container "$container_name"
+            if [ -z "$container_name" ]; then
+                error_msg "Container name cannot be empty."
+            else
+                remove_container "$container_name"
+            fi
             ;;
         0)
-            echo "Exiting..."
+            info_msg "Exiting..."
             exit 0
             ;;
         *)
-            echo "Invalid choice. Please enter a number between 0 and 9, or 99."
+            error_msg "Invalid choice. Please enter a number between 0 and 9, or 99."
             ;;
     esac
+
     read -p "Press Enter to continue..."
 done
