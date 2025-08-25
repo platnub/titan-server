@@ -146,18 +146,20 @@ manage_files() {
             elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#items[@]}" ]; then
                 local selected_item="${items[$((choice - 1))]}"
                 if [ -d "$current_dir/$selected_item" ]; then
-                    if [[ "$current_dir/$selected_item" == *"appdata"* ]]; then
+                    # Only show warning when entering appdata directory
+                    if [[ "$selected_item" == "appdata" ]]; then
                         echo "WARNING: You are entering the appdata directory."
                         echo "This directory contains sensitive permissions. Be careful with your changes."
                         echo "This operation requires sudo rights."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
                     fi
-                    # Fix: Ensure we don't add double slashes when concatenating paths
+                    # Navigate into the directory
                     current_dir="${current_dir%/}/${selected_item}"
                 else
                     # Fix: Ensure we don't add double slashes when opening files
                     local file_path="${current_dir%/}/${selected_item}"
                     echo "Opening $file_path with nano..."
+                    # Only show warning when editing files in appdata directory
                     if [[ "$current_dir" == *"appdata"* ]]; then
                         echo "WARNING: You are editing files in the appdata directory."
                         echo "This directory contains sensitive permissions. Be careful with your changes."
