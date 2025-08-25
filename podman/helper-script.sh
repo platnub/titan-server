@@ -114,9 +114,9 @@ manage_files() {
         echo "============================================="
         # List files and directories with proper sudo for appdata
         if [[ "$current_dir" == *"appdata"* ]]; then
-            local items=($(sudo ls -pA "$current_dir" 2>/dev/null))
+            local items=($(sudo ls -lA "$current_dir" 2>/dev/null | awk '{print $9}'))
         else
-            local items=($(ls -pA "$current_dir" 2>/dev/null))
+            local items=($(ls -lA "$current_dir" 2>/dev/null | awk '{print $9}'))
         fi
         for i in "${!items[@]}"; do
             echo "$((i + 1)). ${items[$i]}"
@@ -145,27 +145,35 @@ manage_files() {
                 break
             elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#items[@]}" ]; then
                 local selected_item="${items[$((choice - 1))]}"
-                # Fix: Ensure we don't add double slashes when constructing paths
-                local full_path="${current_dir%/}/${selected_item%/}"
+                # Check if the selected item is a directory
+                if [[ "$current_dir" == *"appdata"* ]]; then
+                    local item_type=$(sudo ls -ld "$current_dir/$selected_item" 2>/dev/null | awk '{print $1}')
+                else
+                    local item_type=$(ls -ld "$current_dir/$selected_item" 2>/dev/null | awk '{print $1}')
+                fi
 
-                if [ -d "$full_path" ]; then
-                    # Only show warning when entering appdata directory
-                    if [[ "$full_path" == *"appdata"* ]]; then
+                if [[ "$item_type" == d* ]]; then
+                    # It's a directory
+                    if [[ "$current_dir/$selected_item" == *"appdata"* ]]; then
                         echo "WARNING: You are entering the appdata directory."
                         echo "This directory contains sensitive permissions. Be careful with your changes."
                         echo "This operation requires sudo rights."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
                     fi
-                    current_dir="$full_path"
+                    # Fix: Ensure we don't add double slashes when concatenating paths
+                    current_dir="${current_dir%/}/${selected_item}"
                 else
-                    # Only show warning when editing files in appdata
+                    # It's a file
+                    # Fix: Ensure we don't add double slashes when opening files
+                    local file_path="${current_dir%/}/${selected_item}"
+                    echo "Opening $file_path with nano..."
                     if [[ "$current_dir" == *"appdata"* ]]; then
                         echo "WARNING: You are editing files in the appdata directory."
                         echo "This directory contains sensitive permissions. Be careful with your changes."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
-                        sudo nano "$full_path"
+                        sudo nano "$file_path"
                     else
-                        nano "$full_path"
+                        nano "$file_path"
                     fi
                 fi
             else
