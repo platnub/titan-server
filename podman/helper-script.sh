@@ -257,6 +257,7 @@ browse_and_edit_files() {
     local container_name=$1
     local container_dir="$base_dir/$container_name"
     local current_dir="$container_dir"
+
     # Check if nano is installed
     if ! command -v nano &> /dev/null; then
         echo "nano is not installed. Please install it first."
@@ -270,17 +271,21 @@ browse_and_edit_files() {
             return 1
         fi
     fi
+
     while true; do
+        clear  # Clear the screen for a cleaner UI
         echo "============================================="
         echo "Current Directory: $current_dir"
         echo "============================================="
         echo "Files and Directories:"
         echo "============================================="
+
         # List files and directories, including hidden files
-        local items=($(ls -p -a "$current_dir" | grep -v '/appdata$'))
+        local items=($(ls -pA "$current_dir"))
         for i in "${!items[@]}"; do
             echo "$((i + 1)). ${items[$i]}"
         done
+
         echo "============================================="
         echo "Options:"
         echo "============================================="
@@ -288,6 +293,7 @@ browse_and_edit_files() {
         echo "99. Exit file browser"
         echo "============================================="
         read -p "Enter your choice (1-${#items[@]}, 0, or 99): " choice
+
         if [[ "$choice" =~ ^[0-9]+$ ]]; then
             if [ "$choice" -eq 0 ]; then
                 # Go back to previous directory
@@ -295,6 +301,7 @@ browse_and_edit_files() {
                     current_dir=$(dirname "$current_dir")
                 else
                     echo "Already at the root directory of the container."
+                    sleep 2  # Pause to let the user see the message
                 fi
             elif [ "$choice" -eq 99 ]; then
                 # Exit file browser
@@ -312,9 +319,11 @@ browse_and_edit_files() {
                 fi
             else
                 echo "Invalid choice. Please enter a valid number."
+                sleep 2  # Pause to let the user see the message
             fi
         else
             echo "Invalid input. Please enter a number."
+            sleep 2  # Pause to let the user see the message
         fi
     done
 }
