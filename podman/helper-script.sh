@@ -114,20 +114,19 @@ manage_files() {
         echo "============================================="
         # List files and directories with proper sudo for appdata
         if [[ "$current_dir" == *"appdata"* ]]; then
-            # Get list of items with their types
-            local items=($(sudo ls -lA "$current_dir" 2>/dev/null | awk '{print $9 ":" $1}'))
+            # Get list of items with their types (directory or file)
+            local items=($(sudo ls -lA "$current_dir" 2>/dev/null | awk '{print $1 " " $9}'))
         else
-            local items=($(ls -lA "$current_dir" 2>/dev/null | awk '{print $9 ":" $1}'))
+            local items=($(ls -lA "$current_dir" 2>/dev/null | awk '{print $1 " " $9}'))
         fi
 
-        # Display items with / for directories
+        # Display items with / appended to directories
         for i in "${!items[@]}"; do
-            local item_info=${items[$i]}
-            local item_name=${item_info%%:*}
-            local item_type=${item_info#*:}
+            local item="${items[$i]}"
+            local item_type="${item:0:1}"  # First character indicates type (d for directory)
+            local item_name="${item:2}"   # Rest is the name
 
-            # Check if it's a directory
-            if [[ "$item_type" == d* ]]; then
+            if [[ "$item_type" == "d" ]]; then
                 echo "$((i + 1)). ${item_name}/"
             else
                 echo "$((i + 1)). ${item_name}"
@@ -156,24 +155,24 @@ manage_files() {
             elif [ "$choice" -eq 99 ]; then
                 break
             elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#items[@]}" ]; then
-                local selected_item_info="${items[$((choice - 1))]}"
-                local selected_item=${selected_item_info%%:*}
-                local selected_item_type=${selected_item_info#*:}
+                local selected_item="${items[$((choice - 1))]}"
+                local item_type="${selected_item:0:1}"
+                local item_name="${selected_item:2}"
 
-                if [[ "$selected_item_type" == d* ]]; then
+                if [[ "$item_type" == "d" ]]; then
                     # It's a directory
-                    if [[ "$current_dir/$selected_item" == *"appdata"* ]]; then
+                    if [[ "$current_dir/$item_name" == *"appdata"* ]]; then
                         echo "WARNING: You are entering the appdata directory."
                         echo "This directory contains sensitive permissions. Be careful with your changes."
                         echo "This operation requires sudo rights."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
                     fi
                     # Fix: Ensure we don't add double slashes when concatenating paths
-                    current_dir="${current_dir%/}/${selected_item}"
+                    current_dir="${current_dir%/}/${item_name}"
                 else
                     # It's a file
                     # Fix: Ensure we don't add double slashes when opening files
-                    local file_path="${current_dir%/}/${selected_item}"
+                    local file_path="${current_dir%/}/${item_name}"
                     echo "Opening $file_path with nano..."
                     if [[ "$current_dir" == *"appdata"* ]]; then
                         echo "WARNING: You are editing files in the appdata directory."
