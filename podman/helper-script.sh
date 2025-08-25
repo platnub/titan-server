@@ -1,28 +1,26 @@
 #!/bin/bash
 base_dir="/home/podman/containers"
-# Function to list all containers
-list_containers() {
-    echo "Listing all Podman containers:"
-    podman ps -a
-}
 
 # Function to check container status using docker inspect format
 check_container_status() {
     local container_name=$1
     local status_json
+    # Get the JSON output from podman inspect
     status_json=$(podman inspect --format "{{json .State }}" "$container_name" 2>/dev/null)
 
     if [ -z "$status_json" ]; then
-        echo "Error: Could not get status for container $container_name"
+        echo "Error: Could not get status for container $container_name" >&2
         return 1
     fi
 
     # Parse the JSON to get the status
     local status
+    # Remove any extra quotes that might be added by the shell
+    status_json=$(echo "$status_json" | sed "s/^'//; s/'$//")
     status=$(echo "$status_json" | jq -r '.Status' 2>/dev/null)
 
     if [ -z "$status" ]; then
-        echo "Error: Could not parse status for container $container_name"
+        echo "Error: Could not parse status for container $container_name" >&2
         return 1
     fi
 
