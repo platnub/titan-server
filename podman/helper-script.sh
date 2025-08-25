@@ -49,25 +49,19 @@ header() {
     echo -e "${WHITE}${1}${RESET}"
     separator
 }
-# Function to list all containers
+# Function to list all containers and compare with directories
 list_containers() {
     header "Listing All Podman Containers"
     info_msg "Retrieving container information..."
     echo ""
 
     # Get list of container directories
-    local container_dirs=()
+    container_dirs=()
     if [ -d "$base_dir" ]; then
         while IFS= read -r dir; do
             container_dirs+=("$dir")
         done < <(find "$base_dir" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" 2>/dev/null)
     fi
-
-    # Get list of running containers
-    local running_containers=()
-    while IFS= read -r container; do
-        running_containers+=("$container")
-    done < <(podman ps --format "{{.Names}}" 2>/dev/null)
 
     # Display running containers
     echo -e "${GREEN}Running Containers:${RESET}"
@@ -84,26 +78,39 @@ list_containers() {
     podman ps -a --filter "status=created" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}" || error_msg "Failed to list created containers."
     echo ""
 
-    # Display container directories without containers
-    if [ ${#container_dirs[@]} -gt 0 ]; then
-        echo -e "${RED}Container Directories Without Containers:${RESET}"
-        for dir in "${container_dirs[@]}"; do
-            local found=0
-            for container in "${running_containers[@]}"; do
-                if [ "$dir" == "$container" ]; then
-                    found=1
-                    break
-                fi
-            done
-            if [ $found -eq 0 ]; then
-                echo -e "${RED}  - $dir${RESET}"
-            fi
+    # Compare container directories with actual containers
+    echo -e "${MAGENTA}Container Directory Comparison:${RESET}"
+    separator
+
+    # Get list of container names from podman
+    container_names=()
+    while IFS= read -r name; do
+        container_names+=("$name")
+    done < <(podman ps -a --format "{{.Names}}" 2>/dev/null)
+
+    # Check for directories without containers
+    directories_without_containers=()
+    for dir in "${container_dirs[@]}"; do
+        if [[ ! " ${container_names[@]} " =~ " ${dir} " ]]; then
+            directories_without_containers+=("$dir")
+        fi
+    done
+
+    # Display directories without containers in red
+    if [ ${#directories_without_containers[@]} -gt 0 ]; then
+        echo -e "${RED}Directories without containers:${RESET}"
+        for dir in "${directories_without_containers[@]}"; do
+            echo -e "${RED}  - $dir${RESET}"
         done
+        echo ""
+    else
+        echo -e "${GREEN}All container directories have corresponding containers.${RESET}"
         echo ""
     fi
 
     separator
 }
+
 # Function to wait for container to be fully running
 wait_for_container_running() {
     local container_name=$1
@@ -387,7 +394,7 @@ decompose_container() {
     fi
     update_rootless_user "$container_name" || warning_msg "Failed to update rootless user for $container_name"
     info_msg "Decomposing container $container_name..."
-    if ! podman-compose --file "$base_dir/$container_name/compose.yml" down; then
+    if ! podman-compose --file "$base_dir/$container_name/compose.yaml" down; then
         error_msg "Failed to decompose container $container_name"
         return 1
     fi
@@ -439,29 +446,15 @@ create_container() {
         error_msg "Failed to create container directories"
         return 1
     fi
-    # Create compose.yml
-    info_msg "Creating compose.yml file..."
-    # Create a basic compose.yml template
-    if ! sudo sh -c "cat > '$base_dir/$container_name/compose.yml' << 'EOF'
-version: '3.8'
-services:
-  $container_name:
-    image: your_image_name:latest
-    container_name: $container_name
-    restart: unless-stopped
-    env_file: .env
-    volumes:
-      - ./appdata:/config
-      - ./logs:/logs
-    ports:
-      - \"8080:80\"
-EOF"; then
-        error_msg "Failed to create compose.yml file"
+    # Create empty compose.yml file first
+    info_msg "Creating empty compose.yml file..."
+    if ! sudo touch "$base_dir/$container_name/compose.yml"; then
+        error_msg "Failed to create empty compose.yml file"
         return 1
     fi
 
-    # Open the compose.yml file for editing
-    info_msg "Opening compose.yml for editing..."
+    # Edit compose.yml file
+    info_msg "Editing compose.yml file..."
     if ! sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yml"; then
         error_msg "Failed to edit compose.yml file"
         return 1
@@ -693,7 +686,7 @@ create_appdata_folders() {
 # Main menu
 while true; do
     header "Podman Container Management Menu"
-    echo -e "${GREEN}1. List all containerss${RESET}"
+    echo -e "${GREEN}1. List all containers${RESET}"
     echo -e "${GREEN}2. Start a container${RESET}"
     echo -e "${GREEN}3. Stop a container${RESET}"
     echo -e "${GREEN}4. Create a new container${RESET}"
