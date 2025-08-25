@@ -155,7 +155,7 @@ manage_files() {
                         echo "This operation requires sudo rights."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
                     fi
-                    current_dir="$current_dir/$selected_item"
+                    current_dir="${current_dir%/}/${selected_item%/}"
                 else
                     echo "Opening $current_dir/$selected_item with nano..."
                     if [[ "$current_dir" == *"appdata"* ]]; then
