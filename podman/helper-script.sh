@@ -1,39 +1,27 @@
 #!/bin/bash
 base_dir="/home/podman/containers"
 
-# Function to get list of available containers with status
-get_container_list() {
-    # Get all containers with their status
-    podman ps -a --format "table {{.Names}}\t{{.Status}}"
-}
-
-# Function to prompt user to select a container
-select_container() {
+# Function to list all containers and let user choose one
+choose_container() {
     local containers=($(podman ps -a --format "{{.Names}}"))
-
     if [ ${#containers[@]} -eq 0 ]; then
         echo "No containers found."
         return 1
     fi
 
     echo "Available containers:"
-    echo "--------------------"
-    get_container_list
-    echo "--------------------"
+    for i in "${!containers[@]}"; do
+        local status=$(podman inspect -f '{{.State.Status}}' "${containers[$i]}" 2>/dev/null)
+        echo "$((i + 1)). ${containers[$i]} ($status)"
+    done
 
     while true; do
-        read -p "Enter the name of the container (or 'q' to cancel): " container_name
-
-        if [ "$container_name" = "q" ]; then
-            return 1
-        fi
-
-        # Check if the entered container exists
-        if [[ " ${containers[@]} " =~ " ${container_name} " ]]; then
-            echo "$container_name"
+        read -p "Select a container (1-${#containers[@]}): " choice
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#containers[@]}" ]; then
+            echo "${containers[$((choice - 1))]}"
             return 0
         else
-            echo "Container '$container_name' not found. Please try again or enter 'q' to cancel."
+            echo "Invalid selection. Please enter a number between 1 and ${#containers[@]}."
         fi
     done
 }
@@ -41,21 +29,17 @@ select_container() {
 # Function to list all containers
 list_containers() {
     echo "Listing all Podman containers:"
-    echo "-----------------------------"
-    get_container_list
-    echo "-----------------------------"
+    podman ps -a
 }
 
 # Function to wait for container to be fully running
 wait_for_container_running() {
     local container_name=$1
-    local max_attempts=60
+    local max_attempts=60  # Increased timeout
     local attempt=0
     local status
     local health_status
-
     echo "Waiting for container $container_name to be fully running..."
-
     while [ $attempt -lt $max_attempts ]; do
         # Get container status
         status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
@@ -84,7 +68,6 @@ wait_for_container_running() {
         attempt=$((attempt + 1))
         sleep 2
     done
-
     echo "Timeout waiting for container $container_name to start."
     echo "Current status: $status"
     echo "Container logs:"
@@ -147,7 +130,6 @@ manage_files() {
             return 1
         fi
     fi
-
     while true; do
         clear
         echo "============================================="
@@ -452,49 +434,9 @@ remove_container() {
     echo "Container $container_name removed successfully."
 }
 
-# Function to create appdata folders
-create_appdata_folders() {
-    local container_name=$1
-    local appdata_dir="$base_dir/$container_name/appdata"
-
-    echo "Creating additional folders in appdata directory: $appdata_dir"
-    echo "Current folders:"
-    ls -l "$appdata_dir"
-
-    while true; do
-        read -p "Enter folder name to create (or 'q' to finish): " folder_name
-
-        if [ "$folder_name" = "q" ]; then
-            break
-        fi
-
-        if [ -z "$folder_name" ]; then
-            echo "Folder name cannot be empty."
-            continue
-        fi
-
-        if [ -d "$appdata_dir/$folder_name" ]; then
-            echo "Folder '$folder_name' already exists."
-            continue
-        fi
-
-        sudo mkdir -p "$appdata_dir/$folder_name"
-        sudo chmod 700 "$appdata_dir/$folder_name"
-
-        if [ -n "$rootless_user" ]; then
-            podman unshare chown "$rootless_user:$rootless_user" "$appdata_dir/$folder_name"
-        fi
-
-        echo "Created folder: $appdata_dir/$folder_name"
-    done
-
-    echo "Appdata folders updated."
-}
-
 # Main menu
 while true; do
-    clear
-    echo "=============================================a"
+    echo "============================================="
     echo "Podman Container Management Menu"
     echo "============================================="
     echo "1. List all containers"
@@ -510,63 +452,58 @@ while true; do
     echo "0. Exit"
     echo "============================================="
     read -p "Enter your choice (0-9, 99): " choice
-
     case $choice in
         1)
             list_containers
             ;;
         2)
-            container_name=$(select_container)
+            container_name=$(choose_container)
             if [ -n "$container_name" ]; then
                 start_container "$container_name"
             fi
             ;;
         3)
-            container_name=$(select_container)
+            container_name=$(choose_container)
             if [ -n "$container_name" ]; then
                 stop_container "$container_name"
             fi
             ;;
         4)
             read -p "Enter the new container name: " container_name
-            if [ -n "$container_name" ]; then
-                create_container "$container_name"
-            else
-                echo "Container name cannot be empty."
-            fi
+            create_container "$container_name"
             ;;
         5)
-            container_name=$(select_container)
+            container_name=$(choose_container)
             if [ -n "$container_name" ]; then
                 compose_container "$container_name"
             fi
             ;;
         6)
-            container_name=$(select_container)
+            container_name=$(choose_container)
             if [ -n "$container_name" ]; then
                 decompose_container "$container_name"
             fi
             ;;
         7)
-            container_name=$(select_container)
+            container_name=$(choose_container)
             if [ -n "$container_name" ]; then
                 manage_files "$container_name"
             fi
             ;;
         8)
-            container_name=$(select_container)
+            container_name=$(choose_container)
             if [ -n "$container_name" ]; then
                 create_appdata_folders "$container_name"
             fi
             ;;
         9)
-            container_name=$(select_container)
+            container_name=$(choose_container)
             if [ -n "$container_name" ]; then
                 reapply_permissions "$container_name"
             fi
             ;;
         99)
-            container_name=$(select_container)
+            container_name=$(choose_container)
             if [ -n "$container_name" ]; then
                 remove_container "$container_name"
             fi
@@ -579,6 +516,5 @@ while true; do
             echo "Invalid choice. Please enter a number between 0 and 9, or 99."
             ;;
     esac
-
     read -p "Press Enter to continue..."
 done
