@@ -207,6 +207,14 @@ load_rootless_user() {
 update_rootless_user() {
     local container_name=$1
     local env_file="$base_dir/$container_name/.env"
+
+    # First check if the container is in exited state
+    local status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
+    if [ "$status" = "exited" ]; then
+        echo "Container $container_name is in exited state, skipping huser ID check."
+        return 0
+    fi
+
     local max_retries=5
     local retry_delay=1
     local retry_count=0
@@ -227,9 +235,28 @@ update_rootless_user() {
         echo "Failed to determine HUSER for user 'abc' in container '$container_name' after $max_retries attempts. Is it running and does user exist?"
         return 1
     fi
-
-    # Rest of the function remains the same
-    # ...
+    
+    if [ -e "$env_file" ]; then
+        # Check if file is writable, if not make it writable temporarily
+        if [ ! -w "$env_file" ]; then
+            sudo chmod u+w "$env_file"
+        fi
+        if grep -qE '^[[:space:]]*rootless_user=' "$env_file"; then
+            # Update existing key
+            sudo sed -i -E "s|^[[:space:]]*rootless_user=.*|rootless_user=$podman_huser|" "$env_file"
+        else
+            # Append the key
+            sudo sh -c "printf '\nrootless_user=%s\n' '$podman_huser' >> '$env_file'"
+        fi
+        # Restore original permissions if we changed them
+        if [ ! -w "$env_file" ]; then
+            sudo chmod u-w "$env_file"
+        fi
+    else
+        # Create new file with the key
+        sudo sh -c "printf 'rootless_user=%s\n' '$podman_huser' > '$env_file'"
+    fi
+    echo "Updated rootless_user in .env"
 }
 
 # Function to browse and edit files using a simple menu
