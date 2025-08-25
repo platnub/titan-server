@@ -349,7 +349,7 @@ while true; do
     echo "6. Decompose a container"
     echo "7. Browse and edit files"
     echo "99. Remove a container"
-    echo "8. Exit"
+    echo "0. Exit"
     echo "============================================="
     read -p "Enter your choice (1-8): " choice
     case $choice in
@@ -380,7 +380,7 @@ while true; do
             read -p "Enter the container name to browse and edit files: " container_name
             browse_and_edit_files "$container_name"
             ;;
-        8)
+        0)
             echo "Exiting..."
             exit 0
             ;;
