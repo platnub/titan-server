@@ -1,45 +1,34 @@
 #!/bin/bash
 base_dir="/home/podman/containers"
 
-# Function to list all containers
-list_containers() {
-    echo "Listing all Podman containers:"
-    podman ps -a
-}
-
-# Function to choose a container from a numbered list (includes status)
+# Function to list all containers and let user choose one
 choose_container() {
-    local containers
-    mapfile -t containers < <(podman ps -a --format '{{.Names}}|{{.Status}}' | sed '/^$/d')
-
+    local containers=($(podman ps -a --format "{{.Names}}"))
     if [ ${#containers[@]} -eq 0 ]; then
         echo "No containers found."
         return 1
     fi
 
-    echo "Select a container:"
-    local i name status
+    echo "Available containers:"
     for i in "${!containers[@]}"; do
-        IFS='|' read -r name status <<< "${containers[$i]}"
-        printf "%2d) %-30s %s\n" "$((i+1))" "$name" "$status"
+        echo "$((i + 1)). ${containers[$i]}"
     done
 
-    local choice idx
     while true; do
-        read -p "Enter number (0 to cancel): " choice
-        if [[ "$choice" =~ ^[0-9]+$ ]]; then
-            if [ "$choice" -eq 0 ]; then
-                return 1
-            fi
-            idx=$((choice-1))
-            if [ "$idx" -ge 0 ] && [ "$idx" -lt "${#containers[@]}" ]; then
-                IFS='|' read -r name status <<< "${containers[$idx]}"
-                printf '%s\n' "$name"
-                return 0
-            fi
+        read -p "Enter the number of the container you want to select: " choice
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#containers[@]}" ]; then
+            echo "${containers[$((choice - 1))]}"
+            return 0
+        else
+            echo "Invalid choice. Please enter a number between 1 and ${#containers[@]}."
         fi
-        echo "Invalid selection. Try again."
     done
+}
+
+# Function to list all containers
+list_containers() {
+    echo "Listing all Podman containers:"
+    podman ps -a
 }
 
 # Function to wait for container to be fully running
@@ -153,7 +142,7 @@ manage_files() {
         else
             local items=($(ls -lA "$current_dir" 2>/dev/null | awk '{print $9}'))
         fi
-        
+
         # Display files and directories with / appended to directories
         for i in "${!items[@]}"; do
             local item="${items[$i]}"
@@ -162,7 +151,7 @@ manage_files() {
             else
                 local item_type=$(ls -ld "$current_dir/$item" 2>/dev/null | awk '{print $1}')
             fi
-        
+
             if [[ "$item_type" == d* ]]; then
                 # It's a directory - append /
                 echo "$((i + 1)). ${item}/"
@@ -382,7 +371,7 @@ update_rootless_user() {
     local retry_count=0
     local podman_huser
     # First check if container is running
-    if ! podman ps --format '{{.Names}}' | grep -Fxq "$container_name"; then
+    if ! podman ps -l | grep -q "$container_name"; then
         echo "Error: Container $container_name is not running. Cannot update rootless_user."
         return 1
     fi
@@ -467,40 +456,56 @@ while true; do
             list_containers
             ;;
         2)
-            container_name=$(choose_container) || { echo "Cancelled."; continue; }
-            start_container "$container_name"
+            container_name=$(choose_container)
+            if [ -n "$container_name" ]; then
+                start_container "$container_name"
+            fi
             ;;
         3)
-            container_name=$(choose_container) || { echo "Cancelled."; continue; }
-            stop_container "$container_name"
+            container_name=$(choose_container)
+            if [ -n "$container_name" ]; then
+                stop_container "$container_name"
+            fi
             ;;
         4)
             read -p "Enter the new container name: " container_name
             create_container "$container_name"
             ;;
         5)
-            container_name=$(choose_container) || { echo "Cancelled."; continue; }
-            compose_container "$container_name"
+            container_name=$(choose_container)
+            if [ -n "$container_name" ]; then
+                compose_container "$container_name"
+            fi
             ;;
         6)
-            container_name=$(choose_container) || { echo "Cancelled."; continue; }
-            decompose_container "$container_name"
+            container_name=$(choose_container)
+            if [ -n "$container_name" ]; then
+                decompose_container "$container_name"
+            fi
             ;;
         7)
-            container_name=$(choose_container) || { echo "Cancelled."; continue; }
-            manage_files "$container_name"
+            container_name=$(choose_container)
+            if [ -n "$container_name" ]; then
+                manage_files "$container_name"
+            fi
             ;;
         8)
-            container_name=$(choose_container) || { echo "Cancelled."; continue; }
-            create_appdata_folders "$container_name"
+            container_name=$(choose_container)
+            if [ -n "$container_name" ]; then
+                create_appdata_folders "$container_name"
+            fi
             ;;
         9)
-            container_name=$(choose_container) || { echo "Cancelled."; continue; }
-            reapply_permissions "$container_name"
+            container_name=$(choose_container)
+            if [ -n "$container_name" ]; then
+                reapply_permissions "$container_name"
+            fi
             ;;
         99)
-            container_name=$(choose_container) || { echo "Cancelled."; continue; }
-            remove_container "$container_name"
+            container_name=$(choose_container)
+            if [ -n "$container_name" ]; then
+                remove_container "$container_name"
+            fi
             ;;
         0)
             echo "Exiting..."
