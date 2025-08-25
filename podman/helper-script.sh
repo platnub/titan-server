@@ -490,7 +490,7 @@ remove_container() {
 
 # Main menu
 while true; do
-    echo "============================================="
+    echo "=============================================a"
     echo "Podman Container Management Menu"
     echo "============================================="
     echo "1. List all containers"
