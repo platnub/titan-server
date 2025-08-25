@@ -279,6 +279,11 @@ edit_files_with_ranger() {
         sudo chmod -R 700 /home/podman/.config/ranger
     fi
 
+    # Set up terminal for ranger
+    echo "Setting up terminal for ranger-fm..."
+    export TERM=xterm-256color
+    stty sane
+
     # Open ranger-fm in the specified container's appdata directory
     echo "Opening ranger-fm for container $container_name..."
     echo "You can create, edit, and delete files in $appdata_dir."
@@ -293,8 +298,15 @@ edit_files_with_ranger() {
     echo "  - Press 'R' to rename a file"
     echo "  - Press 'q' to quit ranger-fm"
 
-    # Run ranger with sudo to ensure proper permissions
-    sudo -u podman ranger "$appdata_dir"
+    # Run ranger with proper environment and error handling
+    if ! sudo -u podman -E sh -c "cd \"$appdata_dir\" && ranger"; then
+        echo "Error: Failed to launch ranger-fm. This might be due to terminal issues."
+        echo "Try running the following command manually:"
+        echo "sudo -u podman ranger \"$appdata_dir\""
+        echo "If you still experience issues, try running:"
+        echo "sudo -u podman script -qc \"ranger\" /dev/null"
+        return 1
+    fi
 }
 
 # Function to remove a container
