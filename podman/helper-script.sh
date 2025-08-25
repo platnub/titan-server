@@ -204,17 +204,31 @@ load_rootless_user() {
     export rootless_user
 }
 
-# Function to update rootless_user in .env
+# Function to update rootless_user in .env with retry logic
 update_rootless_user() {
     local container_name=$1
     local env_file="$base_dir/$container_name/.env"
-    # Get HUSER for user "abc"
+    local max_retries=3
+    local retry_delay=2
+    local retry_count=0
     local podman_huser
-    podman_huser=$(podman top "$container_name" user huser 2>/dev/null | awk 'NR>1 && $1=="abc" {print $2; exit}')
+
+    while [ $retry_count -lt $max_retries ]; do
+        # Get HUSER for user "abc"
+        podman_huser=$(podman top "$container_name" user huser 2>/dev/null | awk 'NR>1 && $1=="abc" {print $2; exit}')
+        if [ -n "$podman_huser" ]; then
+            break
+        fi
+        echo "Attempt $((retry_count + 1)): Could not determine HUSER for user 'abc' in container '$container_name'. Retrying in $retry_delay seconds..."
+        sleep $retry_delay
+        retry_count=$((retry_count + 1))
+    done
+
     if [ -z "$podman_huser" ]; then
-        echo "Could not determine HUSER for user 'abc' in container '$container_name'. Is it running and does user exist?"
+        echo "Failed to determine HUSER for user 'abc' in container '$container_name' after $max_retries attempts. Is it running and does user exist?"
         return 1
     fi
+
     if [ -e "$env_file" ]; then
         # Check if file is writable, if not make it writable temporarily
         if [ ! -w "$env_file" ]; then
