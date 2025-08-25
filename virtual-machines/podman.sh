@@ -512,12 +512,16 @@ msg_info "Creating Podman user and locking root user"
 msg_ok "Podman user created and root user locked"
 msg_info "Installing & configuring Podman & Installing podman-compose"
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y podman" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "systemctl enable podman" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "systemctl enable --now podman --user" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "apt-get install -y podman-compose" >/dev/null &&
   virt-customize -q -a "${FILE}" --mkdir "/home/podman/containers" >/dev/null &&
 # Makes Podman containers run rootless
   virt-customize -q -a "${FILE}" --mkdir "/home/podman/.config/containers" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e '[containers]\nrootless = true\nuserns = \"nomap\"' > /home/podman/.config/containers/containers.conf\"" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo /bin/su -c \"echo -e '[containers]\nrootless = true\nuserns = \\\"nomap\\\"' > /home/podman/.config/containers/containers.conf\"" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo cp /lib/systemd/system/podman-restart.service $HOME/.config/systemd/user/" >/dev/null &&
+  virt-customize -q -a "${FILE}" --firstboot-command "systemctl --user enable podman-restart.service" >/dev/null &&
+  virt-customize -q -a "${FILE}" --firstboot-command "systemctl enable --user --now podman.socket" >/dev/null &&
+  virt-customize -q -a "${FILE}" --firstboot-command "export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo usermod --add-subuids 10000-75535 podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sudo usermod --add-subgids 10000-75535 podman" >/dev/null
 # Add docker.io as a registry
