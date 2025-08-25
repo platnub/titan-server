@@ -271,6 +271,15 @@ edit_files_with_ranger() {
         fi
     fi
 
+    # Ensure the appdata directory exists
+    if [ ! -d "$appdata_dir" ]; then
+        echo "Directory $appdata_dir does not exist. Creating it now..."
+        sudo mkdir -p "$appdata_dir"
+        sudo chown -R podman:podman "$appdata_dir"
+        sudo chmod -R 700 "$appdata_dir"
+        echo "Directory $appdata_dir created successfully."
+    fi
+
     # Ensure ranger config directory exists with proper permissions
     if [ ! -d "/home/podman/.config/ranger" ]; then
         echo "Creating ranger configuration directory..."
