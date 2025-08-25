@@ -1,33 +1,10 @@
 #!/bin/bash
 base_dir="/home/podman/containers"
-
-# Function to check container status using docker inspect format
-check_container_status() {
-    local container_name=$1
-    local status_json
-    # Get the JSON output from podman inspect
-    status_json=$(podman inspect --format "{{json .State }}" "$container_name" 2>/dev/null)
-
-    if [ -z "$status_json" ]; then
-        echo "Error: Could not get status for container $container_name" >&2
-        return 1
-    fi
-
-    # Parse the JSON to get the status
-    local status
-    # Remove any extra quotes that might be added by the shell
-    status_json=$(echo "$status_json" | sed "s/^'//; s/'$//")
-    status=$(echo "$status_json" | jq -r '.Status' 2>/dev/null)
-
-    if [ -z "$status" ]; then
-        echo "Error: Could not parse status for container $container_name" >&2
-        return 1
-    fi
-
-    echo "$status"
-    return 0
+# Function to list all containers
+list_containers() {
+    echo "Listing all Podman containers:"
+    podman ps -a
 }
-
 # Function to wait for container to be fully running
 wait_for_container_running() {
     local container_name=$1
@@ -36,11 +13,9 @@ wait_for_container_running() {
     local status
     local health_status
     echo "Waiting for container $container_name to be fully running..."
-
     while [ $attempt -lt $max_attempts ]; do
-        # Get container status using our new function
-        status=$(check_container_status "$container_name")
-
+        # Get container status
+        status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
         if [ "$status" = "running" ]; then
             # Check if the container has a health check
             health_status=$(podman inspect -f '{{.State.Health.Status}}' "$container_name" 2>/dev/null)
@@ -66,14 +41,12 @@ wait_for_container_running() {
         attempt=$((attempt + 1))
         sleep 2
     done
-
     echo "Timeout waiting for container $container_name to start."
     echo "Current status: $status"
     echo "Container logs:"
     podman logs "$container_name" 2>&1
     return 1
 }
-
 # Function to run a container
 start_container() {
     local container_name=$1
@@ -99,7 +72,6 @@ start_container() {
     update_rootless_user "$container_name"
     echo "Container $container_name started successfully."
 }
-
 # Function to stop a container
 stop_container() {
     local container_name=$1
@@ -110,7 +82,6 @@ stop_container() {
     podman stop "$container_name"
     echo "Container $container_name stopped successfully."
 }
-
 # Function to create new folders in appdata
 create_appdata_folders() {
     local container_name=$1
@@ -132,7 +103,6 @@ create_appdata_folders() {
         fi
     done
 }
-
 # Function to decompose a container (stop and remove containers)
 decompose_container() {
     local container_name=$1
@@ -141,7 +111,6 @@ decompose_container() {
     podman-compose --file "$base_dir/$container_name/compose.yaml" down
     echo "Container $container_name decomposed successfully."
 }
-
 # Function to compose a container (start containers)
 compose_container() {
     local container_name=$1
@@ -150,7 +119,6 @@ compose_container() {
     podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
     echo "Container $container_name composed successfully."
 }
-
 # Function to create a new container
 create_container() {
     local container_name=$1
@@ -177,7 +145,6 @@ create_container() {
         compose_container "$container_name"
     fi
 }
-
 # Apply user permissions
 reapply_permissions() {
     local container_name=$1
@@ -200,7 +167,6 @@ reapply_permissions() {
     fi
     echo "Permissions applied successfully."
 }
-
 # Load rootless_user from .env
 load_rootless_user() {
     local container_name=$1
@@ -227,24 +193,14 @@ load_rootless_user() {
     rootless_user="$val"
     export rootless_user
 }
-
+# Function to update rootless_user in .env with retry logic
 update_rootless_user() {
     local container_name=$1
     local env_file="$base_dir/$container_name/.env"
-
-    # First check if the container is in exited state using our new function
-    local status=$(check_container_status "$container_name")
-
-    if [ "$status" = "exited" ]; then
-        echo "Container $container_name is in exited state, skipping huser ID check."
-        return 0
-    fi
-
-    local max_retries=5
-    local retry_delay=1
+    local max_retries=3
+    local retry_delay=2
     local retry_count=0
     local podman_huser
-
     while [ $retry_count -lt $max_retries ]; do
         # Get HUSER for user "abc"
         podman_huser=$(podman top "$container_name" user huser 2>/dev/null | awk 'NR>1 && $1=="abc" {print $2; exit}')
@@ -255,12 +211,10 @@ update_rootless_user() {
         sleep $retry_delay
         retry_count=$((retry_count + 1))
     done
-
     if [ -z "$podman_huser" ]; then
         echo "Failed to determine HUSER for user 'abc' in container '$container_name' after $max_retries attempts. Is it running and does user exist?"
         return 1
     fi
-
     if [ -e "$env_file" ]; then
         # Check if file is writable, if not make it writable temporarily
         if [ ! -w "$env_file" ]; then
@@ -283,7 +237,6 @@ update_rootless_user() {
     fi
     echo "Updated rootless_user in .env"
 }
-
 # Function to browse and edit files using a simple menu
 browse_and_edit_files() {
     local container_name=$1
@@ -354,19 +307,15 @@ browse_and_edit_files() {
         fi
     done
 }
-
+# Function to remove a container
 remove_container() {
     local container_name=$1
-    # First check if rootless_user exists
-    if [ -f "$base_dir/$container_name/.env" ]; then
-        load_rootless_user "$container_name"
-    fi
     # Stop the container first
     stop_container "$container_name"
-    # Decompose the container
-    decompose_container "$container_name"
     # Remove the container
     podman rm "$container_name"
+    # Decompose the container
+    decompose_container "$container_name"
     # Ask to remove ALL container data
     read -p "Do you want to remove ALL container data from $container_name? (y/n): " remove_container_data
     if [[ "$remove_container_data" =~ ^[Yy]$ ]]; then
@@ -378,7 +327,6 @@ remove_container() {
     fi
     echo "Container $container_name removed successfully."
 }
-
 # Main menu
 while true; do
     echo "============================================="
@@ -392,7 +340,7 @@ while true; do
     echo "6. Decompose a container"
     echo "7. Browse and edit files"
     echo "99. Remove a container"
-    echo "0. Exit"
+    echo "8. Exit"
     echo "============================================="
     read -p "Enter your choice (1-8): " choice
     case $choice in
@@ -423,7 +371,7 @@ while true; do
             read -p "Enter the container name to browse and edit files: " container_name
             browse_and_edit_files "$container_name"
             ;;
-        0)
+        8)
             echo "Exiting..."
             exit 0
             ;;
