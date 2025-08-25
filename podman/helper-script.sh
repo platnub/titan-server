@@ -498,7 +498,7 @@ while true; do
     echo "7. Browse and edit files"
     echo "8. Add more appdata files"
     echo "9. Reapply permissions to a container"
-    echo "10. Create/delete files"
+    echo "10. Manage container files"
     echo "99. Remove a container"
     echo "0. Exit"
     echo "============================================="
