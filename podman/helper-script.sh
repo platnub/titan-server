@@ -103,67 +103,6 @@ create_appdata_folders() {
         fi
     done
 }
-# Function to create new files in appdata
-create_appdata_files() {
-    local container_name=$1
-    local appdata_dir="$base_dir/$container_name/appdata"
-    echo "Checking for new files to create in $appdata_dir..."
-    while true; do
-        read -p "Enter a file name to create in appdata (leave empty to finish): " file_name
-        if [[ -z "$file_name" ]]; then
-            break
-        fi
-        # Create the file
-        sudo touch "$appdata_dir/$file_name"
-        echo "Created file: $appdata_dir/$file_name"
-        # Apply permissions
-        sudo chmod 600 "$appdata_dir/$file_name"
-        # If rootless_user is set, apply it
-        if [ -n "$rootless_user" ]; then
-            podman unshare chown "$rootless_user:$rootless_user" "$appdata_dir/$file_name"
-        fi
-    done
-}
-# Function to delete files or folders from appdata
-delete_appdata_items() {
-    local container_name=$1
-    local appdata_dir="$base_dir/$container_name/appdata"
-
-    # List all items in appdata directory
-    echo "Items in $appdata_dir:"
-    local items=($(ls -pA "$appdata_dir"))
-    for i in "${!items[@]}"; do
-        echo "$((i + 1)). ${items[$i]}"
-    done
-
-    while true; do
-        read -p "Enter the number of the item to delete (leave empty to finish): " item_number
-        if [[ -z "$item_number" ]]; then
-            break
-        fi
-
-        if [[ "$item_number" =~ ^[0-9]+$ ]] && [ "$item_number" -ge 1 ] && [ "$item_number" -le "${#items[@]}" ]; then
-            local selected_item="${items[$((item_number - 1))]}"
-            local full_path="$appdata_dir/$selected_item"
-
-            # Confirm deletion
-            read -p "Are you sure you want to delete '$selected_item'? (y/n): " confirm_delete
-            if [[ "$confirm_delete" =~ ^[Yy]$ ]]; then
-                if [ -d "$full_path" ]; then
-                    sudo rm -rf "$full_path"
-                    echo "Deleted directory: $full_path"
-                else
-                    sudo rm -f "$full_path"
-                    echo "Deleted file: $full_path"
-                fi
-            else
-                echo "Deletion cancelled."
-            fi
-        else
-            echo "Invalid selection. Please enter a valid number."
-        fi
-    done
-}
 # Function to decompose a container (stop and remove containers)
 decompose_container() {
     local container_name=$1
@@ -196,18 +135,13 @@ create_container() {
     sudo mkdir -p "$base_dir/$container_name/secrets"
     # Create compose.yaml
     sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
-    # Create .env file
+    # Create .env file without starting with -e
     sudo sh -c "echo -e \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
     # Ask to create new folders in appdata
     read -p "Do you want to create any new folders in the appdata directory? (y/n): " create_folders
     if [[ "$create_folders" =~ ^[Yy]$ ]]; then
         create_appdata_folders "$container_name"
-    fi
-    # Ask to create new files in appdata
-    read -p "Do you want to create any new files in the appdata directory? (y/n): " create_files
-    if [[ "$create_files" =~ ^[Yy]$ ]]; then
-        create_appdata_files "$container_name"
     fi
     reapply_permissions "$container_name"
     echo "Container $container_name created successfully."
@@ -350,6 +284,13 @@ browse_and_edit_files() {
         echo "0. Go back to previous directory"
         echo "99. Exit file browser"
         echo "============================================="
+        # Add file creation/deletion options if in the main container directory
+        if [ "$current_dir" == "$container_dir" ]; then
+            echo "100. Create a new file"
+            echo "101. Create a new directory"
+            echo "102. Delete a file or directory"
+            echo "============================================="
+        fi
         read -p "Enter your choice (1-${#items[@]}, 0, or 99): " choice
         if [[ "$choice" =~ ^[0-9]+$ ]]; then
             if [ "$choice" -eq 0 ]; then
@@ -368,33 +309,54 @@ browse_and_edit_files() {
                 local selected_item="${items[$((choice - 1))]}"
                 if [ -d "$current_dir/$selected_item" ]; then
                     # It's a directory, navigate into it
+                    # Special handling for appdata directory
+                    if [ "$selected_item" == "appdata" ]; then
+                        echo "WARNING: You are entering the appdata directory."
+                        echo "This directory contains sensitive data and requires root permissions."
+                        echo "The script will do its best to maintain proper permissions, but be cautious."
+                        read -p "Are you sure you want to continue? (y/n): " continue_appdata
+                        if [[ ! "$continue_appdata" =~ ^[Yy]$ ]]; then
+                            continue
+                        fi
+                    fi
                     current_dir="$current_dir/$selected_item"
                 else
-                    # It's a file, check if it's in appdata directory
-                    if [[ "$current_dir" == *"appdata"* ]]; then
-                        echo "WARNING: You are editing a file in the appdata directory."
-                        echo "This directory is permissions sensitive. The script will do its best to fix permissions,"
-                        echo "but be aware that editing these files may cause permission issues."
-                        read -p "Are you sure you want to edit this file? (y/n): " confirm_edit
-                        if [[ ! "$confirm_edit" =~ ^[Yy]$ ]]; then
-                            echo "File editing cancelled."
-                            continue
-                        fi
-                    fi
-
-                    # Check if the file starts with -e
-                    if head -n 1 "$current_dir/$selected_item" | grep -q '^-e'; then
-                        echo "WARNING: This file starts with '-e'. This is not recommended."
-                        read -p "Do you want to proceed with editing this file? (y/n): " proceed_edit
-                        if [[ ! "$proceed_edit" =~ ^[Yy]$ ]]; then
-                            echo "File editing cancelled."
-                            continue
-                        fi
-                    fi
-
-                    # Open the file with nano
+                    # It's a file, open it with nano
                     echo "Opening $current_dir/$selected_item with nano..."
                     sudo nano "$current_dir/$selected_item"
+                fi
+            elif [ "$current_dir" == "$container_dir" ]; then
+                # Handle file creation/deletion options
+                if [ "$choice" -eq 100 ]; then
+                    # Create a new file
+                    read -p "Enter the name of the new file: " new_file
+                    if [ -n "$new_file" ]; then
+                        sudo touch "$current_dir/$new_file"
+                        echo "Created file: $current_dir/$new_file"
+                        # Open the new file with nano
+                        sudo nano "$current_dir/$new_file"
+                    fi
+                elif [ "$choice" -eq 101 ]; then
+                    # Create a new directory
+                    read -p "Enter the name of the new directory: " new_dir
+                    if [ -n "$new_dir" ]; then
+                        sudo mkdir -p "$current_dir/$new_dir"
+                        echo "Created directory: $current_dir/$new_dir"
+                    fi
+                elif [ "$choice" -eq 102 ]; then
+                    # Delete a file or directory
+                    read -p "Enter the name of the file/directory to delete: " del_item
+                    if [ -n "$del_item" ]; then
+                        if [ -e "$current_dir/$del_item" ]; then
+                            read -p "Are you sure you want to delete $del_item? (y/n): " confirm_delete
+                            if [[ "$confirm_delete" =~ ^[Yy]$ ]]; then
+                                sudo rm -rf "$current_dir/$del_item"
+                                echo "Deleted: $current_dir/$del_item"
+                            fi
+                        else
+                            echo "Error: $del_item does not exist."
+                        fi
+                    fi
                 fi
             else
                 echo "Invalid choice. Please enter a valid number."
@@ -439,12 +401,11 @@ while true; do
     echo "6. Decompose a container"
     echo "7. Browse and edit files"
     echo "8. Add more appdata files"
-    echo "9. Delete appdata files/folders"
-    echo "10. Reapply permissions to a container"
+    echo "9. Reapply permissions to a container"
     echo "99. Remove a container"
     echo "0. Exit"
     echo "============================================="
-    read -p "Enter your choice (0-10, 99): " choice
+    read -p "Enter your choice (0-9, 99): " choice
     case $choice in
         1)
             list_containers
@@ -475,13 +436,9 @@ while true; do
             ;;
         8)
             read -p "Enter the container name to add more appdata files: " container_name
-            create_appdata_files "$container_name"
+            create_appdata_folders "$container_name"
             ;;
         9)
-            read -p "Enter the container name to delete appdata files/folders: " container_name
-            delete_appdata_items "$container_name"
-            ;;
-        10)
             read -p "Enter the container name to reapply permissions: " container_name
             reapply_permissions "$container_name"
             ;;
@@ -494,8 +451,9 @@ while true; do
             exit 0
             ;;
         *)
-            echo "Invalid choice. Please enter a number between 0 and 10, or 99."
+            echo "Invalid choice. Please enter a number between 0 and 9, or 99."
             ;;
     esac
-    read -p "Press Enter to continue..."
+    read -n 1 -s -r -p "Press ENTER to continue..."
+    echo ""  # Add a newline after the prompt
 done
