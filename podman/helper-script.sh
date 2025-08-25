@@ -114,10 +114,18 @@ manage_files() {
         echo "============================================="
         echo "Files and Directories:"
         echo "============================================="
-        local items=($(ls -pA "$current_dir" 2>/dev/null))
+
+        # List files and directories with proper sudo for appdata
+        if [[ "$current_dir" == *"appdata"* ]]; then
+            local items=($(sudo ls -pA "$current_dir" 2>/dev/null))
+        else
+            local items=($(ls -pA "$current_dir" 2>/dev/null))
+        fi
+
         for i in "${!items[@]}"; do
             echo "$((i + 1)). ${items[$i]}"
         done
+
         echo "============================================="
         echo "Options:"
         echo "============================================="
@@ -154,8 +162,10 @@ manage_files() {
                         echo "WARNING: You are editing files in the appdata directory."
                         echo "This directory contains sensitive permissions. Be careful with your changes."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
+                        sudo nano "$current_dir/$selected_item"
+                    else
+                        nano "$current_dir/$selected_item"
                     fi
-                    sudo nano "$current_dir/$selected_item"
                 fi
             else
                 echo "Invalid choice. Please enter a valid number."
@@ -168,8 +178,14 @@ manage_files() {
                     echo "WARNING: You are creating a file in the appdata directory."
                     echo "This directory contains sensitive permissions. Be careful with your changes."
                     read -p "Press Enter to continue or Ctrl+C to cancel..."
+                    sudo touch "$current_dir/$new_file"
+                    sudo chmod 600 "$current_dir/$new_file"
+                    if [ -n "$rootless_user" ]; then
+                        podman unshare chown "$rootless_user:$rootless_user" "$current_dir/$new_file"
+                    fi
+                else
+                    touch "$current_dir/$new_file"
                 fi
-                sudo touch "$current_dir/$new_file"
                 echo "File $current_dir/$new_file created."
                 sleep 2
             fi
@@ -180,13 +196,11 @@ manage_files() {
                     echo "WARNING: You are deleting a file/directory in the appdata directory."
                     echo "This directory contains sensitive permissions. Be careful with your changes."
                     read -p "Press Enter to continue or Ctrl+C to cancel..."
-                fi
-                if [ -e "$current_dir/$delete_item" ]; then
                     sudo rm -rf "$current_dir/$delete_item"
-                    echo "Deleted $current_dir/$delete_item"
                 else
-                    echo "File/directory not found."
+                    rm -rf "$current_dir/$delete_item"
                 fi
+                echo "Deleted $current_dir/$delete_item"
                 sleep 2
             fi
         else
