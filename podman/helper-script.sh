@@ -106,6 +106,7 @@ create_appdata_folders() {
 # Function to decompose a container (stop and remove containers)
 decompose_container() {
     local container_name=$1
+    update_rootless_user "$container_name"
     echo "Decomposing container $container_name..."
     podman-compose --file "$base_dir/$container_name/compose.yaml" down
     echo "Container $container_name decomposed successfully."
