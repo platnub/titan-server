@@ -20,8 +20,10 @@ choose_container() {
     while true; do
         read -p "Enter your choice (1-${#containers[@]}): " choice
         if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#containers[@]}" ]; then
-            # Return only the container name, not the prompt
-            echo "${containers[$((choice - 1))]}"
+            # Store the selected container name in a variable
+            local selected_container="${containers[$((choice - 1))]}"
+            # Return the selected container name
+            echo "$selected_container"
             return 0
         else
             echo "Invalid choice. Please enter a number between 1 and ${#containers[@]}."
@@ -490,7 +492,13 @@ remove_container() {
 
 # Main menu
 while true; do
+    # First list all containers at the top of the menu
     echo "============================================="
+    echo "Current Containers:"
+    echo "============================================="
+    podman ps -a --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}\t{{.Image}}"
+    echo "============================================="
+
     echo "Podman Container Management Menu"
     echo "============================================="
     echo "1. List all containers"
@@ -504,7 +512,7 @@ while true; do
     echo "9. Reapply permissions to a container"
     echo "99. Remove a container"
     echo "0. Exit"
-    echo "============================================="
+    echo "=============================================a"
     read -p "Enter your choice (0-9, 99): " choice
     case $choice in
         1)
