@@ -1,40 +1,45 @@
 #!/bin/bash
 base_dir="/home/podman/containers"
 
-# Function to list all containers and let user choose one
+# Function to list all containers
+list_containers() {
+    echo "Listing all Podman containers:"
+    podman ps -a
+}
+
+# Function to choose a container from a numbered list (includes status)
 choose_container() {
-    local prompt_message=$1
-    local containers=($(podman ps -a --format "{{.Names}}"))
+    local containers
+    mapfile -t containers < <(podman ps -a --format '{{.Names}}|{{.Status}}' | sed '/^$/d')
 
     if [ ${#containers[@]} -eq 0 ]; then
         echo "No containers found."
         return 1
     fi
 
-    echo "$prompt_message"
-    echo "Available containers:"
+    echo "Select a container:"
+    local i name status
     for i in "${!containers[@]}"; do
-        echo "$((i + 1)). ${containers[$i]}"
+        IFS='|' read -r name status <<< "${containers[$i]}"
+        printf "%2d) %-30s %s\n" "$((i+1))" "$name" "$status"
     done
 
+    local choice idx
     while true; do
-        read -p "Enter your choice (1-${#containers[@]}): " choice
-        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#containers[@]}" ]; then
-            # Store the selected container name in a variable
-            local selected_container="${containers[$((choice - 1))]}"
-            # Return the selected container name
-            echo "$selected_container"
-            return 0
-        else
-            echo "Invalid choice. Please enter a number between 1 and ${#containers[@]}."
+        read -p "Enter number (0 to cancel): " choice
+        if [[ "$choice" =~ ^[0-9]+$ ]]; then
+            if [ "$choice" -eq 0 ]; then
+                return 1
+            fi
+            idx=$((choice-1))
+            if [ "$idx" -ge 0 ] && [ "$idx" -lt "${#containers[@]}" ]; then
+                IFS='|' read -r name status <<< "${containers[$idx]}"
+                printf '%s\n' "$name"
+                return 0
+            fi
         fi
+        echo "Invalid selection. Try again."
     done
-}
-
-# Function to list all containers
-list_containers() {
-    echo "Listing all Podman containers:"
-    podman ps -a --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}\t{{.Image}}"
 }
 
 # Function to wait for container to be fully running
@@ -82,12 +87,7 @@ wait_for_container_running() {
 
 # Function to run a container
 start_container() {
-    local container_name=$(choose_container "Select a container to start:")
-    if [ -z "$container_name" ]; then
-        echo "No container selected."
-        return 1
-    fi
-
+    local container_name=$1
     reapply_permissions "$container_name"
     # Start the container
     echo "Starting container $container_name..."
@@ -113,12 +113,7 @@ start_container() {
 
 # Function to stop a container
 stop_container() {
-    local container_name=$(choose_container "Select a container to stop:")
-    if [ -z "$container_name" ]; then
-        echo "No container selected."
-        return 1
-    fi
-
+    local container_name=$1
     # Only update .env if this was called from option 3 in the menu
     if [[ "$choice" == "3" ]]; then
         update_rootless_user "$container_name"
@@ -129,15 +124,9 @@ stop_container() {
 
 # Function to manage files (browse, edit, create, delete)
 manage_files() {
-    local container_name=$(choose_container "Select a container to manage files:")
-    if [ -z "$container_name" ]; then
-        echo "No container selected."
-        return 1
-    fi
-
+    local container_name=$1
     local container_dir="$base_dir/$container_name"
     local current_dir="$container_dir"
-
     # Check if nano is installed
     if ! command -v nano &> /dev/null; then
         echo "nano is not installed. Please install it first."
@@ -151,7 +140,6 @@ manage_files() {
             return 1
         fi
     fi
-
     while true; do
         clear
         echo "============================================="
@@ -165,7 +153,7 @@ manage_files() {
         else
             local items=($(ls -lA "$current_dir" 2>/dev/null | awk '{print $9}'))
         fi
-
+        
         # Display files and directories with / appended to directories
         for i in "${!items[@]}"; do
             local item="${items[$i]}"
@@ -174,7 +162,7 @@ manage_files() {
             else
                 local item_type=$(ls -ld "$current_dir/$item" 2>/dev/null | awk '{print $1}')
             fi
-
+        
             if [[ "$item_type" == d* ]]; then
                 # It's a directory - append /
                 echo "$((i + 1)). ${item}/"
@@ -286,12 +274,7 @@ manage_files() {
 
 # Function to decompose a container (stop and remove containers)
 decompose_container() {
-    local container_name=$(choose_container "Select a container to decompose:")
-    if [ -z "$container_name" ]; then
-        echo "No container selected."
-        return 1
-    fi
-
+    local container_name=$1
     update_rootless_user "$container_name"
     echo "Decomposing container $container_name..."
     podman-compose --file "$base_dir/$container_name/compose.yaml" down
@@ -300,12 +283,7 @@ decompose_container() {
 
 # Function to compose a container (start containers)
 compose_container() {
-    local container_name=$(choose_container "Select a container to compose:")
-    if [ -z "$container_name" ]; then
-        echo "No container selected."
-        return 1
-    fi
-
+    local container_name=$1
     echo "Composing container $container_name..."
     reapply_permissions "$container_name"
     podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
@@ -320,34 +298,24 @@ compose_container() {
 
 # Function to create a new container
 create_container() {
-    read -p "Enter the new container name: " container_name
-    if [ -z "$container_name" ]; then
-        echo "Container name cannot be empty."
-        return 1
-    fi
-
+    local container_name=$1
     # Create container directories
     sudo mkdir -p "$base_dir/$container_name"
     sudo mkdir -p "$base_dir/$container_name/appdata"
     sudo mkdir -p "$base_dir/$container_name/logs"
     sudo mkdir -p "$base_dir/$container_name/secrets"
-
     # Create compose.yaml
     sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yaml"
-
     # Create .env file
     sudo sh -c "echo \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"
     sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"
-
     # Ask to create new folders in appdata
     read -p "Do you want to create any new folders in the appdata directory? (y/n): " create_folders
     if [[ "$create_folders" =~ ^[Yy]$ ]]; then
         create_appdata_folders "$container_name"
     fi
-
     reapply_permissions "$container_name"
     echo "Container $container_name created successfully."
-
     # Ask to run the container
     read -p "Do you want to compose the container now? (y/n): " compose_now
     if [[ "$compose_now" =~ ^[Yy]$ ]]; then
@@ -365,10 +333,8 @@ reapply_permissions() {
     sudo chmod 400 "$base_dir/$container_name/secrets"
     sudo chmod 400 "$base_dir/$container_name/compose.yaml"
     sudo chmod 400 "$base_dir/$container_name/.env"
-
     # Change ownership to podman user
     sudo chown -R podman:podman "$base_dir/$container_name"
-
     # Load rootless_user if it exists
     if [ -f "$base_dir/$container_name/.env" ]; then
         load_rootless_user "$container_name"
@@ -415,13 +381,11 @@ update_rootless_user() {
     local retry_delay=1
     local retry_count=0
     local podman_huser
-
     # First check if container is running
-    if ! podman ps -l | grep -q "$container_name"; then
+    if ! podman ps --format '{{.Names}}' | grep -Fxq "$container_name"; then
         echo "Error: Container $container_name is not running. Cannot update rootless_user."
         return 1
     fi
-
     while [ $retry_count -lt $max_retries ]; do
         # Get HUSER for user "abc"
         podman_huser=$(podman top "$container_name" user huser 2>/dev/null | awk 'NR>1 && $1=="abc" {print $2; exit}')
@@ -432,12 +396,10 @@ update_rootless_user() {
         sleep $retry_delay
         retry_count=$((retry_count + 1))
     done
-
     if [ -z "$podman_huser" ]; then
         echo "Failed to determine HUSER for user 'abc' in container '$container_name' after $max_retries attempts. Is the container running and does the user exist?"
         return 1
     fi
-
     if [ -e "$env_file" ]; then
         # Check if file is writable, if not make it writable temporarily
         if [ ! -w "$env_file" ]; then
@@ -463,21 +425,13 @@ update_rootless_user() {
 
 # Function to remove a container
 remove_container() {
-    local container_name=$(choose_container "Select a container to remove:")
-    if [ -z "$container_name" ]; then
-        echo "No container selected."
-        return 1
-    fi
-
+    local container_name=$1
     # Stop the container first
     stop_container "$container_name"
-
     # Remove the container
     podman rm "$container_name"
-
     # Decompose the container
     decompose_container "$container_name"
-
     # Ask to remove ALL container data
     read -p "Do you want to remove ALL container data from $container_name? (y/n): " remove_container_data
     if [[ "$remove_container_data" =~ ^[Yy]$ ]]; then
@@ -492,13 +446,7 @@ remove_container() {
 
 # Main menu
 while true; do
-    # First list all containers at the top of the menu
     echo "============================================="
-    echo "Current Containers:"
-    echo "============================================="
-    podman ps -a --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}\t{{.Image}}"
-    echo "============================================="
-
     echo "Podman Container Management Menu"
     echo "============================================="
     echo "1. List all containers"
@@ -512,44 +460,47 @@ while true; do
     echo "9. Reapply permissions to a container"
     echo "99. Remove a container"
     echo "0. Exit"
-    echo "=============================================a"
+    echo "============================================="
     read -p "Enter your choice (0-9, 99): " choice
     case $choice in
         1)
             list_containers
             ;;
         2)
-            start_container
+            container_name=$(choose_container) || { echo "Cancelled."; continue; }
+            start_container "$container_name"
             ;;
         3)
-            stop_container
+            container_name=$(choose_container) || { echo "Cancelled."; continue; }
+            stop_container "$container_name"
             ;;
         4)
-            create_container
+            read -p "Enter the new container name: " container_name
+            create_container "$container_name"
             ;;
         5)
-            compose_container
+            container_name=$(choose_container) || { echo "Cancelled."; continue; }
+            compose_container "$container_name"
             ;;
         6)
-            decompose_container
+            container_name=$(choose_container) || { echo "Cancelled."; continue; }
+            decompose_container "$container_name"
             ;;
         7)
-            manage_files
+            container_name=$(choose_container) || { echo "Cancelled."; continue; }
+            manage_files "$container_name"
             ;;
         8)
-            local container_name=$(choose_container "Select a container to add appdata folders:")
-            if [ -n "$container_name" ]; then
-                create_appdata_folders "$container_name"
-            fi
+            container_name=$(choose_container) || { echo "Cancelled."; continue; }
+            create_appdata_folders "$container_name"
             ;;
         9)
-            local container_name=$(choose_container "Select a container to reapply permissions:")
-            if [ -n "$container_name" ]; then
-                reapply_permissions "$container_name"
-            fi
+            container_name=$(choose_container) || { echo "Cancelled."; continue; }
+            reapply_permissions "$container_name"
             ;;
         99)
-            remove_container
+            container_name=$(choose_container) || { echo "Cancelled."; continue; }
+            remove_container "$container_name"
             ;;
         0)
             echo "Exiting..."
