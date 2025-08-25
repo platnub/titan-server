@@ -518,16 +518,16 @@ msg_info "Installing & configuring Podman & Installing podman-compose"
 # Makes Podman containers run rootless
   virt-customize -q -a "${FILE}" --mkdir "/home/podman/.config/containers" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "/bin/su -c \"echo -e '[containers]\nrootless = true\nuserns = \\\"nomap\\\"' > /home/podman/.config/containers/containers.conf\"" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "cp /lib/systemd/system/podman-restart.service /home/podman/.config/systemd/user/" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command -v "cp /lib/systemd/system/podman-restart.service /home/podman/.config/systemd/user/" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "usermod --add-subuids 10000-75535 podman" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "usermod --add-subgids 10000-75535 podman" >/dev/null
-  virt-customize -q -a "${FILE}" --firstboot-command "systemctl --user enable podman-restart.service" >/dev/null
-  virt-customize -q -a "${FILE}" --firstboot-command "systemctl enable --user --now podman.socket" >/dev/null
-  virt-customize -q -a "${FILE}" --firstboot-command "export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock" >/dev/null
+  virt-customize -q -a "${FILE}" --firstboot-command -v "systemctl --user enable podman-restart.service" >/dev/null
+  virt-customize -q -a "${FILE}" --firstboot-command -v "systemctl enable --user --now podman.socket" >/dev/null
+  virt-customize -q -a "${FILE}" --firstboot-command -v "export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock" >/dev/null
 # Add docker.io as a registry
   virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
-  virt-customize -q -a "${FILE}" --firstboot-command "loginctl enable-linger podman" >/dev/null
+  virt-customize -q -a "${FILE}" --firstboot-command -v "loginctl enable-linger podman" >/dev/null
 msg_ok "Podman installed"
 # Only configure privileged ports if user confirmed
 if [ "$OPEN_PORTS" = "yes" ]; then
