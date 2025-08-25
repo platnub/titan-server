@@ -1,12 +1,10 @@
 #!/bin/bash
 base_dir="/home/podman/containers"
-
 # Function to list all containers
 list_containers() {
     echo "Listing all Podman containers:"
     podman ps -a
 }
-
 # Function to wait for container to be fully running
 wait_for_container_running() {
     local container_name=$1
@@ -49,7 +47,6 @@ wait_for_container_running() {
     podman logs "$container_name" 2>&1
     return 1
 }
-
 # Function to run a container
 start_container() {
     local container_name=$1
@@ -75,7 +72,6 @@ start_container() {
     update_rootless_user "$container_name"
     echo "Container $container_name started successfully."
 }
-
 # Function to stop a container
 stop_container() {
     local container_name=$1
@@ -86,7 +82,6 @@ stop_container() {
     podman stop "$container_name"
     echo "Container $container_name stopped successfully."
 }
-
 # Function to create new folders in appdata
 create_appdata_folders() {
     local container_name=$1
@@ -108,7 +103,6 @@ create_appdata_folders() {
         fi
     done
 }
-
 # Function to decompose a container (stop and remove containers)
 decompose_container() {
     local container_name=$1
@@ -116,7 +110,6 @@ decompose_container() {
     podman-compose --file "$base_dir/$container_name/compose.yaml" down
     echo "Container $container_name decomposed successfully."
 }
-
 # Function to compose a container (start containers)
 compose_container() {
     local container_name=$1
@@ -131,7 +124,6 @@ compose_container() {
     update_rootless_user "$container_name"
     echo "Container $container_name composed successfully."
 }
-
 # Function to create a new container
 create_container() {
     local container_name=$1
@@ -158,7 +150,6 @@ create_container() {
         compose_container "$container_name"
     fi
 }
-
 # Apply user permissions
 reapply_permissions() {
     local container_name=$1
@@ -181,7 +172,6 @@ reapply_permissions() {
     fi
     echo "Permissions applied successfully."
 }
-
 # Load rootless_user from .env
 load_rootless_user() {
     local container_name=$1
@@ -208,7 +198,6 @@ load_rootless_user() {
     rootless_user="$val"
     export rootless_user
 }
-
 # Function to update rootless_user in .env with retry logic
 update_rootless_user() {
     local container_name=$1
@@ -217,13 +206,11 @@ update_rootless_user() {
     local retry_delay=1
     local retry_count=0
     local podman_huser
-
     # First check if container is running
     if ! podman ps -l | grep -q "$container_name"; then
         echo "Error: Container $container_name is not running. Cannot update rootless_user."
         return 1
     fi
-
     while [ $retry_count -lt $max_retries ]; do
         # Get HUSER for user "abc"
         podman_huser=$(podman top "$container_name" user huser 2>/dev/null | awk 'NR>1 && $1=="abc" {print $2; exit}')
@@ -234,12 +221,10 @@ update_rootless_user() {
         sleep $retry_delay
         retry_count=$((retry_count + 1))
     done
-
     if [ -z "$podman_huser" ]; then
         echo "Failed to determine HUSER for user 'abc' in container '$container_name' after $max_retries attempts. Is the container running and does the user exist?"
         return 1
     fi
-
     if [ -e "$env_file" ]; then
         # Check if file is writable, if not make it writable temporarily
         if [ ! -w "$env_file" ]; then
@@ -262,7 +247,6 @@ update_rootless_user() {
     fi
     echo "Updated rootless_user in .env"
 }
-
 # Function to browse and edit files using a simple menu
 browse_and_edit_files() {
     local container_name=$1
@@ -333,7 +317,6 @@ browse_and_edit_files() {
         fi
     done
 }
-
 # Function to remove a container
 remove_container() {
     local container_name=$1
@@ -354,7 +337,6 @@ remove_container() {
     fi
     echo "Container $container_name removed successfully."
 }
-
 # Main menu
 while true; do
     echo "============================================="
@@ -367,10 +349,12 @@ while true; do
     echo "5. Compose a container"
     echo "6. Decompose a container"
     echo "7. Browse and edit files"
+    echo "8. Add more appdata files"
+    echo "9. Reapply permissions to a container"
     echo "99. Remove a container"
-    echo "8. Exit"
+    echo "0. Exit"
     echo "============================================="
-    read -p "Enter your choice (1-8): " choice
+    read -p "Enter your choice (0-9, 99): " choice
     case $choice in
         1)
             list_containers
@@ -400,15 +384,23 @@ while true; do
             browse_and_edit_files "$container_name"
             ;;
         8)
-            echo "Exiting..."
-            exit 0
+            read -p "Enter the container name to add more appdata files: " container_name
+            create_appdata_folders "$container_name"
+            ;;
+        9)
+            read -p "Enter the container name to reapply permissions: " container_name
+            reapply_permissions "$container_name"
             ;;
         99)
             read -p "Enter the container name to remove: " container_name
             remove_container "$container_name"
             ;;
+        0)
+            echo "Exiting..."
+            exit 0
+            ;;
         *)
-            echo "Invalid choice. Please enter a number between 1 and 8."
+            echo "Invalid choice. Please enter a number between 0 and 9, or 99."
             ;;
     esac
     read -p "Press any key to continue..."
