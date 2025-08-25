@@ -279,16 +279,21 @@ edit_files_with_ranger() {
         sudo chmod -R 700 /home/podman/.config/ranger
     fi
 
-    # Create a temporary directory
-    temp_dir=$(mktemp -d)
+    # Create a custom ranger configuration to exclude the appdata folder
+    local custom_rc_file="/home/podman/.config/ranger/rc.conf"
+    if [ ! -f "$custom_rc_file" ]; then
+        echo "Creating custom ranger configuration to exclude appdata folder..."
+        sudo -u podman sh -c "cat > $custom_rc_file << 'EOF'
+set exclude appdata/*
+EOF"
+        sudo chown podman:podman "$custom_rc_file"
+        sudo chmod 600 "$custom_rc_file"
+    fi
 
-    # Copy the files to the temporary directory
-    echo "Copying files to temporary directory..."
-    cp -r "$appdata_dir"/* "$temp_dir"
-
-    # Open ranger-fm in the temporary directory
+    # Open ranger-fm in the specified container's appdata directory
     echo "Opening ranger-fm for container $container_name..."
-    echo "You can create, edit, and delete files in $temp_dir."
+    echo "You can create, edit, and delete files in $appdata_dir."
+    echo "The appdata folder is excluded from the list."
     echo "To quit ranger-fm, press 'q' and confirm if prompted."
     echo "Basic ranger-fm navigation:"
     echo "  - Use arrow keys to navigate"
@@ -301,16 +306,7 @@ edit_files_with_ranger() {
     echo "  - Press 'q' to quit ranger-fm"
 
     # Run ranger with sudo to ensure proper permissions
-    sudo -u podman ranger "$temp_dir"
-
-    # Copy the files back to the original directory
-    echo "Copying files back to original directory..."
-    cp -r "$temp_dir"/* "$appdata_dir"
-
-    # Clean up the temporary directory
-    rm -rf "$temp_dir"
-
-    echo "Files have been updated in $appdata_dir."
+    sudo -u podman ranger "$appdata_dir"
 }
 
 # Function to remove a container
