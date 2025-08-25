@@ -20,6 +20,7 @@ choose_container() {
     while true; do
         read -p "Enter your choice (1-${#containers[@]}): " choice
         if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#containers[@]}" ]; then
+            # Return just the container name, not the prompt
             echo "${containers[$((choice - 1))]}"
             return 0
         else
@@ -489,7 +490,7 @@ remove_container() {
 
 # Main menu
 while true; do
-    echo "=============================================a"
+    echo "============================================="
     echo "Podman Container Management Menu"
     echo "============================================="
     echo "1. List all containers"
