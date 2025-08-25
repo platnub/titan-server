@@ -133,9 +133,7 @@ manage_files() {
         if [[ "$choice" =~ ^[0-9]+$ ]]; then
             if [ "$choice" -eq 0 ]; then
                 if [ "$current_dir" != "$container_dir" ]; then
-                    # Fix: Use dirname to properly handle path navigation
                     current_dir=$(dirname "$current_dir")
-                    # Ensure we don't end up with double slashes
                     current_dir=${current_dir%/}
                 else
                     echo "Already at the root directory of the container."
@@ -145,9 +143,13 @@ manage_files() {
                 break
             elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#items[@]}" ]; then
                 local selected_item="${items[$((choice - 1))]}"
+                # Remove trailing slash from selected item if present
+                selected_item=${selected_item%/}
+
+                # Check if the selected item is a directory
                 if [ -d "$current_dir/$selected_item" ]; then
-                    # Only show warning when entering appdata directory
-                    if [[ "$selected_item" == "appdata" ]]; then
+                    # Check if we're entering the appdata directory
+                    if [[ "$current_dir/$selected_item" == *"appdata"* ]]; then
                         echo "WARNING: You are entering the appdata directory."
                         echo "This directory contains sensitive permissions. Be careful with your changes."
                         echo "This operation requires sudo rights."
@@ -156,10 +158,9 @@ manage_files() {
                     # Navigate into the directory
                     current_dir="${current_dir%/}/${selected_item}"
                 else
-                    # Fix: Ensure we don't add double slashes when opening files
+                    # It's a file, so open it with nano
                     local file_path="${current_dir%/}/${selected_item}"
                     echo "Opening $file_path with nano..."
-                    # Only show warning when editing files in appdata directory
                     if [[ "$current_dir" == *"appdata"* ]]; then
                         echo "WARNING: You are editing files in the appdata directory."
                         echo "This directory contains sensitive permissions. Be careful with your changes."
@@ -176,7 +177,6 @@ manage_files() {
         elif [[ "$choice" == "c" ]]; then
             read -p "Enter new file name: " new_file
             if [[ -n "$new_file" ]]; then
-                # Fix: Ensure we don't add double slashes when creating files
                 local file_path="${current_dir%/}/${new_file}"
                 if [[ "$current_dir" == *"appdata"* ]]; then
                     echo "WARNING: You are creating a file in the appdata directory."
@@ -196,7 +196,6 @@ manage_files() {
         elif [[ "$choice" == "d" ]]; then
             read -p "Enter file/directory name to delete: " delete_item
             if [[ -n "$delete_item" ]]; then
-                # Fix: Ensure we don't add double slashes when deleting files
                 local item_path="${current_dir%/}/${delete_item}"
                 if [[ "$current_dir" == *"appdata"* ]]; then
                     echo "WARNING: You are deleting a file/directory in the appdata directory."
