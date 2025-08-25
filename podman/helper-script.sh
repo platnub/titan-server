@@ -1,10 +1,33 @@
 #!/bin/bash
 base_dir="/home/podman/containers"
-
 # Function to list all containers
 list_containers() {
     echo "Listing all Podman containers:"
     podman ps -a
+}
+
+# Function to check container status using docker inspect format
+check_container_status() {
+    local container_name=$1
+    local status_json
+    status_json=$(podman inspect --format "{{json .State }}" "$container_name" 2>/dev/null)
+
+    if [ -z "$status_json" ]; then
+        echo "Error: Could not get status for container $container_name"
+        return 1
+    fi
+
+    # Parse the JSON to get the status
+    local status
+    status=$(echo "$status_json" | jq -r '.Status' 2>/dev/null)
+
+    if [ -z "$status" ]; then
+        echo "Error: Could not parse status for container $container_name"
+        return 1
+    fi
+
+    echo "$status"
+    return 0
 }
 
 # Function to wait for container to be fully running
@@ -15,9 +38,11 @@ wait_for_container_running() {
     local status
     local health_status
     echo "Waiting for container $container_name to be fully running..."
+
     while [ $attempt -lt $max_attempts ]; do
-        # Get container status
-        status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
+        # Get container status using our new function
+        status=$(check_container_status "$container_name")
+
         if [ "$status" = "running" ]; then
             # Check if the container has a health check
             health_status=$(podman inspect -f '{{.State.Health.Status}}' "$container_name" 2>/dev/null)
@@ -43,6 +68,7 @@ wait_for_container_running() {
         attempt=$((attempt + 1))
         sleep 2
     done
+
     echo "Timeout waiting for container $container_name to start."
     echo "Current status: $status"
     echo "Container logs:"
@@ -124,23 +150,6 @@ compose_container() {
     echo "Composing container $container_name..."
     reapply_permissions "$container_name"
     podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
-
-    # Wait for containers to be fully running
-    local containers=$(podman-compose --file "$base_dir/$container_name/compose.yaml" ps -q)
-    for container_id in $containers; do
-        container_name=$(podman inspect -f '{{.Name}}' "$container_id" | sed 's|/||')
-        if ! wait_for_container_running "$container_name"; then
-            echo "Error: Container $container_name did not start properly."
-            return 1
-        fi
-    done
-
-    # Update rootless_user for all containers in the compose file
-    for container_id in $containers; do
-        container_name=$(podman inspect -f '{{.Name}}' "$container_id" | sed 's|/||')
-        update_rootless_user "$container_name"
-    done
-
     echo "Container $container_name composed successfully."
 }
 
@@ -225,8 +234,9 @@ update_rootless_user() {
     local container_name=$1
     local env_file="$base_dir/$container_name/.env"
 
-    # First check if the container is in exited state
-    local status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
+    # First check if the container is in exited state using our new function
+    local status=$(check_container_status "$container_name")
+
     if [ "$status" = "exited" ]; then
         echo "Container $container_name is in exited state, skipping huser ID check."
         return 0
@@ -252,7 +262,7 @@ update_rootless_user() {
         echo "Failed to determine HUSER for user 'abc' in container '$container_name' after $max_retries attempts. Is it running and does user exist?"
         return 1
     fi
-    
+
     if [ -e "$env_file" ]; then
         # Check if file is writable, if not make it writable temporarily
         if [ ! -w "$env_file" ]; then
@@ -281,7 +291,6 @@ browse_and_edit_files() {
     local container_name=$1
     local container_dir="$base_dir/$container_name"
     local current_dir="$container_dir"
-
     # Check if nano is installed
     if ! command -v nano &> /dev/null; then
         echo "nano is not installed. Please install it first."
@@ -295,7 +304,6 @@ browse_and_edit_files() {
             return 1
         fi
     fi
-
     while true; do
         clear  # Clear the screen for a cleaner UI
         echo "============================================="
@@ -303,13 +311,11 @@ browse_and_edit_files() {
         echo "============================================="
         echo "Files and Directories:"
         echo "============================================="
-
         # List files and directories, including hidden files
         local items=($(ls -pA "$current_dir"))
         for i in "${!items[@]}"; do
             echo "$((i + 1)). ${items[$i]}"
         done
-
         echo "============================================="
         echo "Options:"
         echo "============================================="
@@ -317,7 +323,6 @@ browse_and_edit_files() {
         echo "99. Exit file browser"
         echo "============================================="
         read -p "Enter your choice (1-${#items[@]}, 0, or 99): " choice
-
         if [[ "$choice" =~ ^[0-9]+$ ]]; then
             if [ "$choice" -eq 0 ]; then
                 # Go back to previous directory
@@ -358,16 +363,12 @@ remove_container() {
     if [ -f "$base_dir/$container_name/.env" ]; then
         load_rootless_user "$container_name"
     fi
-
     # Stop the container first
     stop_container "$container_name"
-
     # Decompose the container
     decompose_container "$container_name"
-
     # Remove the container
     podman rm "$container_name"
-
     # Ask to remove ALL container data
     read -p "Do you want to remove ALL container data from $container_name? (y/n): " remove_container_data
     if [[ "$remove_container_data" =~ ^[Yy]$ ]]; then
