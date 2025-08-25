@@ -124,6 +124,23 @@ compose_container() {
     echo "Composing container $container_name..."
     reapply_permissions "$container_name"
     podman-compose --file "$base_dir/$container_name/compose.yaml" up --detach
+
+    # Wait for containers to be fully running
+    local containers=$(podman-compose --file "$base_dir/$container_name/compose.yaml" ps -q)
+    for container_id in $containers; do
+        container_name=$(podman inspect -f '{{.Name}}' "$container_id" | sed 's|/||')
+        if ! wait_for_container_running "$container_name"; then
+            echo "Error: Container $container_name did not start properly."
+            return 1
+        fi
+    done
+
+    # Update rootless_user for all containers in the compose file
+    for container_id in $containers; do
+        container_name=$(podman inspect -f '{{.Name}}' "$container_id" | sed 's|/||')
+        update_rootless_user "$container_name"
+    done
+
     echo "Container $container_name composed successfully."
 }
 
