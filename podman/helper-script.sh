@@ -114,12 +114,24 @@ manage_files() {
         echo "============================================="
         # List files and directories with proper sudo for appdata
         if [[ "$current_dir" == *"appdata"* ]]; then
-            local items=($(sudo ls -lA "$current_dir" 2>/dev/null | awk '{print $9}'))
+            # Get list of items with their types
+            local items=($(sudo ls -lA "$current_dir" 2>/dev/null | awk '{print $9 ":" $1}'))
         else
-            local items=($(ls -lA "$current_dir" 2>/dev/null | awk '{print $9}'))
+            local items=($(ls -lA "$current_dir" 2>/dev/null | awk '{print $9 ":" $1}'))
         fi
+
+        # Display items with / for directories
         for i in "${!items[@]}"; do
-            echo "$((i + 1)). ${items[$i]}"
+            local item_info=${items[$i]}
+            local item_name=${item_info%%:*}
+            local item_type=${item_info#*:}
+
+            # Check if it's a directory
+            if [[ "$item_type" == d* ]]; then
+                echo "$((i + 1)). ${item_name}/"
+            else
+                echo "$((i + 1)). ${item_name}"
+            fi
         done
         echo "============================================="
         echo "Options:"
@@ -144,15 +156,11 @@ manage_files() {
             elif [ "$choice" -eq 99 ]; then
                 break
             elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#items[@]}" ]; then
-                local selected_item="${items[$((choice - 1))]}"
-                # Check if the selected item is a directory
-                if [[ "$current_dir" == *"appdata"* ]]; then
-                    local item_type=$(sudo ls -ld "$current_dir/$selected_item" 2>/dev/null | awk '{print $1}')
-                else
-                    local item_type=$(ls -ld "$current_dir/$selected_item" 2>/dev/null | awk '{print $1}')
-                fi
+                local selected_item_info="${items[$((choice - 1))]}"
+                local selected_item=${selected_item_info%%:*}
+                local selected_item_type=${selected_item_info#*:}
 
-                if [[ "$item_type" == d* ]]; then
+                if [[ "$selected_item_type" == d* ]]; then
                     # It's a directory
                     if [[ "$current_dir/$selected_item" == *"appdata"* ]]; then
                         echo "WARNING: You are entering the appdata directory."
