@@ -145,21 +145,26 @@ manage_files() {
                 break
             elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#items[@]}" ]; then
                 local selected_item="${items[$((choice - 1))]}"
+                # Remove trailing slash from selected item if present
+                selected_item=${selected_item%/}
+
+                # Check if the selected item is a directory
                 if [ -d "$current_dir/$selected_item" ]; then
-                    # Only show warning when entering appdata directory
+                    # Check if we're entering the appdata directory
                     if [[ "$current_dir/$selected_item" == *"appdata"* ]]; then
                         echo "WARNING: You are entering the appdata directory."
                         echo "This directory contains sensitive permissions. Be careful with your changes."
                         echo "This operation requires sudo rights."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
                     fi
-                    # Navigate into directory
+                    # Navigate into the directory
                     current_dir="${current_dir%/}/${selected_item}"
                 else
-                    # Fix: Ensure we don't add double slashes when opening files
+                    # It's a file, open it with nano
                     local file_path="${current_dir%/}/${selected_item}"
                     echo "Opening $file_path with nano..."
-                    # Only show warning when editing files in appdata
+
+                    # Only show warning if editing a file in appdata
                     if [[ "$current_dir" == *"appdata"* ]]; then
                         echo "WARNING: You are editing files in the appdata directory."
                         echo "This directory contains sensitive permissions. Be careful with your changes."
@@ -390,7 +395,7 @@ remove_container() {
 
 # Main menu
 while true; do
-    echo "============================================="
+    echo "=============================================a"
     echo "Podman Container Management Menu"
     echo "============================================="
     echo "1. List all containers"
