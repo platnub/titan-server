@@ -133,7 +133,7 @@ manage_files() {
         if [[ "$choice" =~ ^[0-9]+$ ]]; then
             if [ "$choice" -eq 0 ]; then
                 if [ "$current_dir" != "$container_dir" ]; then
-                    # Go back to parent directory
+                    # Fix: Use dirname to properly handle path navigation
                     current_dir=$(dirname "$current_dir")
                     # Ensure we don't end up with double slashes
                     current_dir=${current_dir%/}
@@ -146,20 +146,21 @@ manage_files() {
             elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#items[@]}" ]; then
                 local selected_item="${items[$((choice - 1))]}"
                 if [ -d "$current_dir/$selected_item" ]; then
-                    # Navigate into directory
+                    # Only show warning when entering appdata directory
                     if [[ "$current_dir/$selected_item" == *"appdata"* ]]; then
                         echo "WARNING: You are entering the appdata directory."
                         echo "This directory contains sensitive permissions. Be careful with your changes."
                         echo "This operation requires sudo rights."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
                     fi
-                    # Ensure we don't add double slashes when concatenating paths
+                    # Navigate into directory
                     current_dir="${current_dir%/}/${selected_item}"
                 else
-                    # Edit file
+                    # Fix: Ensure we don't add double slashes when opening files
                     local file_path="${current_dir%/}/${selected_item}"
                     echo "Opening $file_path with nano..."
-                    if [[ "$file_path" == *"appdata"* ]]; then
+                    # Only show warning when editing files in appdata
+                    if [[ "$current_dir" == *"appdata"* ]]; then
                         echo "WARNING: You are editing files in the appdata directory."
                         echo "This directory contains sensitive permissions. Be careful with your changes."
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
@@ -175,7 +176,7 @@ manage_files() {
         elif [[ "$choice" == "c" ]]; then
             read -p "Enter new file name: " new_file
             if [[ -n "$new_file" ]]; then
-                # Create new file
+                # Fix: Ensure we don't add double slashes when creating files
                 local file_path="${current_dir%/}/${new_file}"
                 if [[ "$current_dir" == *"appdata"* ]]; then
                     echo "WARNING: You are creating a file in the appdata directory."
@@ -195,7 +196,7 @@ manage_files() {
         elif [[ "$choice" == "d" ]]; then
             read -p "Enter file/directory name to delete: " delete_item
             if [[ -n "$delete_item" ]]; then
-                # Delete file or directory
+                # Fix: Ensure we don't add double slashes when deleting files
                 local item_path="${current_dir%/}/${delete_item}"
                 if [[ "$current_dir" == *"appdata"* ]]; then
                     echo "WARNING: You are deleting a file/directory in the appdata directory."
@@ -211,28 +212,6 @@ manage_files() {
         else
             echo "Invalid input. Please enter a number, 'c', 'd', or '99'."
             sleep 2
-        fi
-    done
-}
-
-# Function to create new folders in appdata
-create_appdata_folders() {
-    local container_name=$1
-    local appdata_dir="$base_dir/$container_name/appdata"
-    echo "Checking for new folders to create in $appdata_dir..."
-    while true; do
-        read -p "Enter a folder name to create in appdata (leave empty to finish): " folder_name
-        if [[ -z "$folder_name" ]]; then
-            break
-        fi
-        # Create the folder
-        sudo mkdir -p "$appdata_dir/$folder_name"
-        echo "Created folder: $appdata_dir/$folder_name"
-        # Apply permissions
-        sudo chmod 700 "$appdata_dir/$folder_name"
-        # If rootless_user is set, apply it
-        if [ -n "$rootless_user" ]; then
-            podman unshare chown "$rootless_user:$rootless_user" "$appdata_dir/$folder_name"
         fi
     done
 }
