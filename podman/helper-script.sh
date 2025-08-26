@@ -711,7 +711,7 @@ prepare_machine() {
     # Add docker.io as a registry
     cp /etc/containers/registries.conf /home/podman/.config/containers/
     success_msg "Added docker.io registry."
-    echo "unqualified-search-registries = ['docker.io\']" >> /home/podman/.config/containers/registries.conf
+    echo "unqualified-search-registries = [\"docker.io\"]" >> /home/podman/.config/containers/registries.conf
     # Open ports 80+ for the unpriveledged Podman containers to use
     read -p "Do you want to configure priveledged ports 80+ for the Podman containers? (y/n): " configure_priveledged_ports_yn
     if [[ "$configure_priveledged_ports_yn" =~ ^[Yy]$ ]]; then
