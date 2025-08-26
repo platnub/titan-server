@@ -683,6 +683,43 @@ create_appdata_folders() {
     done
     success_msg "Finished creating additional folders in appdata directory."
 }
+# Prepares the machine for Podman
+prepare_machine() {
+    # Installing Podman 
+    sudo apt-get update -qq && apt-get install -y podman
+    success_msg "Podman installed."
+    # Installing Podman-compose
+    sudo apt-get install -y podman-compose
+    success_msg "Podman-compose installed."
+    # Configuring Podman
+    mkdir "/home/podman/containers"
+    systemctl --user --now enable podman
+    success_msg "Podman enabled."
+    # Makes Podman containers run rootless
+    mkdir "/home/podman/.config/containers"
+    echo -e '[containers]\nrootless = true\nuserns = "nomap"' > /home/podman/.config/containers/containers.conf
+    sudo usermod --add-subuids 10000-75535 podman
+    sudo usermod --add-subgids 10000-75535 podman
+    success_msg "Configured extra security for rootless containers (nomap)."
+    # Make containers start on boot
+    cp /lib/systemd/system/podman-restart.service /home/podman/.config/systemd/user/
+    systemctl --user enable podman-restart.service
+    loginctl enable-linger $UID
+    systemctl --user --now enable podman.socket
+    export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock
+    success_msg "Ensured Podman containers start on boot (restart: always)."
+    # Add docker.io as a registry
+    cp /etc/containers/registries.conf /home/podman/.config/containers/
+    success_msg "Added docker.io registry."
+    echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf
+        read -p "Do you want to configure priveledged ports 80+ for the Podman containers? (y/n): " configure_priveledged_ports_yn
+        if [[ "$configure_priveledged_ports_yn" =~ ^[Yy]$ ]]; then
+            sudo echo -e '# Lowering privileged ports to 80 to allow us to run rootless Podman containers on lower ports\n# default: 1024\nnet.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.d/podman-privileged-ports.conf\
+            sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf
+            success_msg "Ports 80+ opened."
+        fi
+    success_msg "Machine is ready!"
+}
 # Main menu
 while true; do
     header "Podman Container Management Menu"
@@ -696,6 +733,7 @@ while true; do
     echo -e "${GREEN}8. Add more appdata files${RESET}"
     echo -e "${GREEN}9. Reapply permissions to a container${RESET}"
     echo -e "${RED}99. Remove a container${RESET}"
+    echo -e "${RED}01. Prepare machine for Podman${RESET}"
     echo -e "${BLUE}0. Exit${RESET}"
     separator
     read -p "Enter your choice (0-9, 99): " choice
@@ -773,6 +811,12 @@ while true; do
                 error_msg "Container name cannot be empty."
             else
                 remove_container "$container_name"
+            fi
+            ;;
+        01)
+            read -p "!! Are you sure you want to prep this machine for Podman !! (y/n): " prepare_machine_yn
+            if [[ "$prepare_machine_yn" =~ ^[Yy]$ ]]; then
+                prepare_machine
             fi
             ;;
         0)
