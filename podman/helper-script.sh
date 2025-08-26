@@ -394,7 +394,7 @@ decompose_container() {
     fi
     update_rootless_user "$container_name" || warning_msg "Failed to update rootless user for $container_name"
     info_msg "Decomposing container $container_name..."
-    if ! podman-compose --file "$base_dir/$container_name/compose.yaml" down; then
+    if ! podman-compose --file "$base_dir/$container_name/compose.yml" down; then
         error_msg "Failed to decompose container $container_name"
         return 1
     fi
