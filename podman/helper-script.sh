@@ -322,7 +322,7 @@ manage_files() {
                         read -p "Press Enter to continue or Ctrl+C to cancel..."
                         sudo nano "$file_path" || error_msg "Failed to open file with nano."
                     else
-                        nano "$file_path" || error_msg "Failed to open file with nano."
+                        sudo nano "$file_path" || error_msg "Failed to open file with nano."
                     fi
                 fi
             else
