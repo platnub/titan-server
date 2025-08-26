@@ -715,7 +715,7 @@ prepare_machine() {
     # Open ports 80+ for the unpriveledged Podman containers to use
     read -p "Do you want to configure priveledged ports 80+ for the Podman containers? (y/n): " configure_priveledged_ports_yn
     if [[ "$configure_priveledged_ports_yn" =~ ^[Yy]$ ]]; then
-        sudo echo -e '# Lowering privileged ports to 80 to allow us to run rootless Podman containers on lower ports\n# default: 1024\nnet.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.d/podman-privileged-ports.conf\
+        sudo echo -e '# Lowering privileged ports to 80 to allow us to run rootless Podman containers on lower ports\n# default: 1024\nnet.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.d/podman-privileged-ports.conf
         sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf
         success_msg "Ports 80+ opened."
     fi
