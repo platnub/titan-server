@@ -724,8 +724,13 @@ prepare_machine() {
     if [[ "$improve_caching_yn" =~ ^[Yy]$ ]]; then
         echo -e 'vm.swappiness=10\nvm.vfs_cache_pressure = 50\nfs.inotify.max_user_watches=262144' >> /etc/sysctl.conf
         success_msg "Improved file caching."
-    fi    
+    fi
     success_msg "Machine is ready!"
+    # Recommend reboot
+    read -p "Reboot recommended... (y/n): " reboot_yn
+    if [[ "$reboot_yn" =~ ^[Yy]$ ]]; then
+        sudo reboot -f
+    fi
 }
 # Main menu
 while true; do
