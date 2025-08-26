@@ -194,7 +194,7 @@ function default_settings() {
   VMID=$(get_valid_nextid)
   FORMAT=",efitype=4m"
   MACHINE=""
-  DISK_CACHE=""
+  DISK_=""
   DISK_SIZE="10G"
   HN="podman"
   CPU_TYPE=""
@@ -210,7 +210,7 @@ function default_settings() {
   echo -e "${CONTAINERID}${BOLD}${DGN}Virtual Machine ID: ${BGN}${VMID}${CL}"
   echo -e "${CONTAINERTYPE}${BOLD}${DGN}Machine Type: ${BGN}q35${CL}"
   echo -e "${DISKSIZE}${BOLD}${DGN}Disk Size: ${BGN}${DISK_SIZE}${CL}"
-  echo -e "${DISKSIZE}${BOLD}${DGN}Disk Cache: ${BGN}None${CL}"
+  echo -e "${DISKSIZE}${BOLD}${DGN}Disk : ${BGN}None${CL}"
   echo -e "${HOSTNAME}${BOLD}${DGN}Hostname: ${BGN}${HN}${CL}"
   echo -e "${OS}${BOLD}${DGN}CPU Model: ${BGN}KVM64${CL}"
   echo -e "${CPUCORE}${BOLD}${DGN}CPU Cores: ${BGN}${CORE_COUNT}${CL}"
@@ -385,15 +385,6 @@ function advanced_settings() {
     fi
   else
     exit-script
-  fi
-  
-  # Add question for enabling caching for file servers
-  if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "S" --yesno --defaultno "Enable caching for file servers (cloud storage/media like Jellyfin andPlex)" 10 58); then
-    echo -e "${DEFAULT}${BOLD}${DGN}Enable caching: ${BGN}yes${CL}"
-    ENABLE_CACHING="yes"
-  else
-    echo -e "${DEFAULT}${BOLD}${DGN}Enable caching: ${BGN}no${CL}"
-    ENABLE_CACHING="no"
   fi
 
   if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "START VIRTUAL MACHINE" --yesno "Start VM when completed?" 10 58); then
