@@ -686,7 +686,7 @@ create_appdata_folders() {
 # Prepares the machine for Podman
 prepare_machine() {
     # Installing Podman 
-    sudo apt-get update -qq && apt-get install -y podman
+    sudo apt-get update -qq && sudo apt-get install -y podman
     success_msg "Podman installed."
     # Installing Podman-compose
     sudo apt-get install -y podman-compose
