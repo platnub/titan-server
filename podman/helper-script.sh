@@ -564,17 +564,17 @@ update_rootless_user() {
     fi
     info_msg "Updating rootless_user for container $container_name..."
     while [ $retry_count -lt $max_retries ]; do
-        # Get HUSER for user "abc"
-        podman_huser=$(podman top "$container_name" user huser 2>/dev/null | awk 'NR>1 && $1=="abc" {print $2; exit}')
+        # Get HUSER for user "root"
+        podman_huser=$(podman top "$container_name" user huser 2>/dev/null | awk 'NR>1 && $1=="root" {print $2; exit}')
         if [ -n "$podman_huser" ]; then
             break
         fi
-        warning_msg "Attempt $((retry_count + 1)): Could not determine HUSER for user 'abc' in container '$container_name'. Retrying in $retry_delay seconds..."
+        warning_msg "Attempt $((retry_count + 1)): Could not determine HUSER for user 'root' in container '$container_name'. Retrying in $retry_delay seconds..."
         sleep $retry_delay
         retry_count=$((retry_count + 1))
     done
     if [ -z "$podman_huser" ]; then
-        error_msg "Failed to determine HUSER for user 'abc' in container '$container_name' after $max_retries attempts. Is the container running and does the user exist?"
+        error_msg "Failed to determine HUSER for user 'root' in container '$container_name' after $max_retries attempts. Is the container running and does the user exist?"
         return 1
     fi
     if [ -e "$env_file" ]; then
