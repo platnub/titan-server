@@ -386,15 +386,6 @@ function advanced_settings() {
   else
     exit-script
   fi
-
-  # Add question for opening ports starting at 80
-  if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "S" --yesno --defaultno "Open ports starting at 80 for Podman containers?" 10 58); then
-    echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}yes${CL}"
-    OPEN_PORTS="yes"
-  else
-    echo -e "${DEFAULT}${BOLD}${DGN}Open ports starting at 80: ${BGN}no${CL}"
-    OPEN_PORTS="no"
-  fi
   
   # Add question for enabling caching for file servers
   if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "S" --yesno --defaultno "Enable caching for file servers (cloud storage/media like Jellyfin andPlex)" 10 58); then
@@ -510,48 +501,12 @@ msg_info "Creating Podman user and locking root user"
   virt-customize -q -a "${FILE}" --password podman:password:${SUDO_PASSWORD} >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "passwd -l root" >/dev/null &&
 msg_ok "Podman user created and root user locked"
-msg_info "Installing & configuring Podman & Installing podman-compose"
-  virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y podman" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "systemctl enable --now podman --user" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "apt-get install -y podman-compose" >/dev/null &&
-  virt-customize -q -a "${FILE}" --mkdir "/home/podman/containers" >/dev/null &&
-# Makes Podman containers run rootless
-  virt-customize -q -a "${FILE}" --mkdir "/home/podman/.config/containers" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "/bin/su -c \"echo -e '[containers]\nrootless = true\nuserns = \\\"nomap\\\"' > /home/podman/.config/containers/containers.conf\"" >/dev/null &&
-  virt-customize -q -a -v "${FILE}" --run-command "cp /lib/systemd/system/podman-restart.service /home/podman/.config/systemd/user/" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "usermod --add-subuids 10000-75535 podman" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "usermod --add-subgids 10000-75535 podman" >/dev/null
-  virt-customize -q -a -v "${FILE}" --firstboot-command "systemctl --user enable podman-restart.service" >/dev/null
-  virt-customize -q -a -v "${FILE}" --firstboot-command "systemctl enable --user --now podman.socket" >/dev/null
-  virt-customize -q -a -v "${FILE}" --firstboot-command "export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock" >/dev/null
-# Add docker.io as a registry
-  virt-customize -q -a "${FILE}" --run-command "cp /etc/containers/registries.conf /home/podman/.config/containers/" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "echo \"unqualified-search-registries = ['docker.io']\" >> /home/podman/.config/containers/registries.conf" >/dev/null &&
-  virt-customize -q -a -v "${FILE}" --firstboot-command "loginctl enable-linger podman" >/dev/null
-msg_ok "Podman installed"
-# Only configure privileged ports if user confirmed
-if [ "$OPEN_PORTS" = "yes" ]; then
-  msg_info "Configuring privileged ports 80+ for Podman containers"
-  virt-customize -q -a "${FILE}" --run-command "/bin/su -c \"echo -e '# Lowering privileged ports to 80 to allow us to run rootless Podman containers on lower ports\n# default: 1024\nnet.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.d/podman-privileged-ports.conf\"" >/dev/null &&
-  virt-customize -q -a "${FILE}" --firstboot-command "sudo sysctl --load /etc/sysctl.d/podman-privileged-ports.conf" >/dev/null
-  msg_ok "Configuring privileged ports 80+ for Podman containers"
-else
-  msg_ok "Skipping privileged ports 80+ configuration for Podman containers"
-fi
 msg_info "Installing, configuring and restarting SSH"
   virt-customize -q -a "${FILE}" --run-command "apt install ssh -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "apt-get install fail2ban -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "sed -i 's/\#Port 22/Port ${SSH_PORT}/' /etc/ssh/sshd_config" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl restart sshd" >/dev/null
 msg_ok "SSH installed"
-# Enables large file caching for file servers.
-if [ "$ENABLE_CACHING" = "yes" ]; then
-  msg_info "Enabling better caching for file servers."
-  virt-customize -q -a "${FILE}" --run-command "/bin/su -c \"echo -e 'vm.swappiness=10\nvm.vfs_cache_pressure = 50\nfs.inotify.max_user_watches=262144' >> /etc/sysctl.conf\"" >/dev/null
-  msg_ok "Better file server caching enabled"
-else
-  msg_ok "Skipping better file server caching"
-fi
 msg_info "Expanding root partition to use full disk space"
 qemu-img create -f qcow2 expanded.qcow2 ${DISK_SIZE} >/dev/null 2>&1
 virt-resize --expand /dev/sda1 ${FILE} expanded.qcow2 >/dev/null 2>&1
