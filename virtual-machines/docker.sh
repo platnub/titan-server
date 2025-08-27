@@ -486,10 +486,9 @@ fi
   virt-customize -q -a "${FILE}" --hostname "${HN}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
 msg_info "Creating Docker user and locking root user"
-  virt-customize -q -a "${FILE}" --run-command "adduser ${HN}" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "adduser --gecos GECOS ${HN} -p ${SUDO_PASSWORD}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "adduser ${HN} sudo" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "usermod -aG sudo {$HN}" >/dev/null &&
-  virt-customize -q -a "${FILE}" --password ${HN}:password:${SUDO_PASSWORD} >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "passwd -l root" >/dev/null &&
 msg_ok "${HN} Docker user created and root user locked"
 msg_info "Installing, configuring and restarting SSH"
