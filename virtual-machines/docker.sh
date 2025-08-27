@@ -488,7 +488,7 @@ fi
 msg_info "Creating Docker user and locking root user"
   virt-customize -q -a "${FILE}" --run-command "useradd -r ${HN}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "adduser ${HN} sudo" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "usermod -aG sudo {$HN}" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "usermod -aG sudo $HN" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "passwd -l root" >/dev/null &&
 msg_ok "${HN} Docker user created and root user locked"
 msg_info "Installing, configuring and restarting SSH"
