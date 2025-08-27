@@ -4,7 +4,7 @@
 # Author: [Your Name]
 # Version: 1.0
 # Base directory for all container data
-base_dir="/home/podman/containers"
+base_dir="/opt/containers"
 # Color definitions
 RED='\033[1;31m'
 YELLOW='\033[1;33m'
