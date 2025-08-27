@@ -692,7 +692,8 @@ prepare_machine() {
     sudo apt-get install -y podman-compose
     success_msg "Podman-compose installed."
     # Configuring Podman
-    mkdir "/home/podman/containers"
+    sudo mkdir "$base_dir"
+    sudo chown podman:podman "$base_dir"
     systemctl --user --now enable podman
     success_msg "Podman enabled."
     # Makes Podman containers run rootless
