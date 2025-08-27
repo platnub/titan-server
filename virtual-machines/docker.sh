@@ -486,12 +486,12 @@ fi
   virt-customize -q -a "${FILE}" --hostname "${HN}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo -n > /etc/machine-id" >/dev/null &&
 msg_info "Creating Docker user and locking root user"
-  virt-customize -q -a "${FILE}" --run-command "adduser $hn" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "adduser $hn sudo" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "adduser ${hn}" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "adduser ${hn} sudo" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "usermod -aG sudo $hn" >/dev/null &&
-  virt-customize -q -a "${FILE}" --password $hn:password:${SUDO_PASSWORD} >/dev/null &&
+  virt-customize -q -a "${FILE}" --password ${hn}:password:${SUDO_PASSWORD} >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "passwd -l root" >/dev/null &&
-msg_ok "$hn Docker user created and root user locked"
+msg_ok "${hn} Docker user created and root user locked"
 msg_info "Installing, configuring and restarting SSH"
   virt-customize -q -a "${FILE}" --run-command "apt install ssh -y" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "apt-get install fail2ban -y" >/dev/null &&
