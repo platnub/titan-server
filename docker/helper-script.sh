@@ -636,7 +636,7 @@ create_container() {
     puid=$(id -u "$container_name" 2>/dev/null)
     pgid=$(id -g "$container_name" 2>/dev/null)
 
-    if ! sudo sh -c "echo \"PUID=$puid\nPGID=$pgid\nDATADIR=\"/opt/containers/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"; then
+    if ! sudo sh -c "echo \"PUID=$puid\nPGID=$pgid\nTZ=Europe/Amsterdam\nDATADIR=/opt/containers/$container_name/appdata\nDOCKERDIR=/opt/containers\" > '$base_dir/$container_name/.env'"; then
         error_msg "Failed to create .env file"
         return 1
     fi
