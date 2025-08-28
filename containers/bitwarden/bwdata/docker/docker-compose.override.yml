@@ -3,3 +3,6 @@ services:
     ports:
       - '6904:8080'
       - '6905:8443'
+    # Temporary fix: https://github.com/bitwarden/server/issues/6234
+    entrypoint: /bin/sh
+    command: -c "sed -i 's|cp /etc/bitwarden/nginx|cp -p /etc/bitwarden/nginx|' /entrypoint.sh; exec /entrypoint.sh"
