@@ -498,7 +498,7 @@ msg_ok "Installing Docker"
   virt-customize -q -a "${FILE}" --run-command "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable' > /etc/apt/sources.list.d/docker.list" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl enable docker" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "mkdir /opt/containers" >/dev/null
+  virt-customize -q -a "${FILE}" --run-command "mkdir /opt/containers" >/dev/null &&
 success_msg "Docker installed"
 msg_info "Creating Docker user and locking root user"
   virt-customize -q -a "${FILE}" --run-command "useradd -r ${HN}" >/dev/null &&
