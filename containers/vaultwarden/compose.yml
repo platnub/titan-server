@@ -6,6 +6,6 @@ services:
     environment:
       DOMAIN: "https://vw.domain.tld"
     volumes:
-      - ./appdata/data/:/data/
+      - ${DATADIR}/data/:/data/
     ports:
       - 127.0.0.1:6904:80
