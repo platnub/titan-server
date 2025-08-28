@@ -1,7 +1,7 @@
 ########################### SECRETS
 secrets:
   basic_auth_credentials:
-    file: $DOCKERDIR/secrets/admin
+    file: $CONTAINERDIR/secrets/admin
 
 ########################### NETWORKS
 networks:
@@ -20,4 +20,4 @@ services:
       DOMAIN: "https://b.example.com"
       ADMIN_TOKEN: admin_token
     volumes:
-      - $DATADIR/data/:/data/
+      - $CONTAINERDIR/appdata/data/:/data/
