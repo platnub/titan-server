@@ -2,7 +2,7 @@
 services:
   newt:
     image: fosrl/newt
-    container_name: newt
+    container_name: dev_newt
     restart: unless-stopped
     hostname: pangolin
     networks:
