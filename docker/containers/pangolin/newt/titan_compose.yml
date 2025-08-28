@@ -17,6 +17,9 @@ services:
     hostname: pangolin
     networks:
       - vaultwarden_default
+    secrets:
+      - NEWT_ID
+      - NEWT_SECRET
     environment:
       - PANGOLIN_ENDPOINT=https://pangolin.example.com
       - NEWT_ID=${NEWT_ID}
