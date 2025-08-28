@@ -1,3 +1,8 @@
+########################### SECRETS
+secrets:
+  basic_auth_credentials:
+    file: $DOCKERDIR/secrets/newt
+
 ########################### SERVICES
 services:
   newt:
@@ -9,5 +14,5 @@ services:
       - vaultwarden
     environment:
       - PANGOLIN_ENDPOINT=https://pangolin.example.com
-      - NEWT_ID=$SECRET_ID
-      - NEWT_SECRET=$SECRET_SECRET
+      - NEWT_ID=$NEWT_ID
+      - NEWT_SECRET=$NEWT_SECRET
