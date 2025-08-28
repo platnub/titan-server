@@ -618,7 +618,7 @@ create_container() {
 
     # Create a new system user for the container
     info_msg "Creating system user for container $container_name..."
-    if ! sudo useradd -r -s /usr/sbin/nologin "$container_name"; then
+    if ! sudo useradd -s /usr/sbin/nologin "$container_name"; then
         error_msg "Failed to create system user $container_name"
         return 1
     fi
@@ -667,7 +667,7 @@ create_container() {
     puid=$(id -u "$container_name" 2>/dev/null)
     pgid=$(id -g "$container_name" 2>/dev/null)
 
-    if ! sudo sh -c "echo \"PUID=$puid\nPGID=$pgid\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"; then
+    if ! sudo sh -c "echo \"PUID=$puid\nPGID=$pgid\nDATADIR=\"${DOCKERDIR}/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"; then
         error_msg "Failed to create .env file"
         return 1
     fi
