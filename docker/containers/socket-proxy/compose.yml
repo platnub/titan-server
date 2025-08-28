@@ -1,4 +1,22 @@
 # Source: https://github.com/SimpleHomelab/Deployrr/blob/main/compose/socket-proxy.yml
+
+########################### INCLUDE
+include:
+  # Universal .env file
+  - /opt/containers/.env
+
+########################### NETWORKS
+networks:
+  default:
+    driver: bridge
+  socket_proxy:
+    name: socket_proxy
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.0.0/24
+
+########################### SERVICES
 services:
   # Docker Socket Proxy - Security Enchanced Proxy for Docker Socket
   socket-proxy:
@@ -10,8 +28,8 @@ services:
     profiles: ["core", "all"]
     networks:
       socket_proxy:
-        ipv4_address: 192.168.91.254 # You can specify a static IP
-    # privileged: true # true for VM. False (default) for unprivileged LXC container.
+        ipv4_address: 192.168.0.254 # You can specify a static IP
+    privileged: true # true for VM. False (default) for unprivileged LXC container.
     # ports:
       #- "2375:2375"
     volumes:
