@@ -48,82 +48,6 @@ install_argon2() {
     return 0
 }
 
-generate_secret() {
-    local secret_string=$1
-    if [ -z "$secret_string" ]; then
-        # Generate a random string if none provided
-        random_string=$(openssl rand -base64 32)
-        secret_string=$(echo -n "MySecretPassword" | argon2 "$random_string" -e -id -k 19456 -t 2 -p 1 | sed 's#\$#\$\$#g')
-    else
-        secret_string=$(echo -n "MySecretPassword" | argon2 "$secret_string" -e -id -k 19456 -t 2 -p 1 | sed 's#\$#\$\$#g')
-    fi
-
-    echo "$secret_string"
-    return 0
-}
-
-# Function to create secret files
-create_secret_files() {
-    local container_name=$1
-    local secrets_dir="$base_dir/$container_name/secrets"
-
-    # Check if secrets directory exists
-    if [ ! -d "$secrets_dir" ]; then
-        error_msg "Secrets directory $secrets_dir does not exist."
-        return 1
-    fi
-
-    info_msg "Creating secret files for container $container_name..."
-
-    while true; do
-        read -p "Enter the name of the secret file (or press Enter to finish): " secret_file_name
-        if [ -z "$secret_file_name" ]; then
-            break
-        fi
-
-        # Check if file already exists
-        if [ -f "$secrets_dir/$secret_file_name" ]; then
-            warning_msg "File $secret_file_name already exists. Overwriting..."
-        fi
-
-        read -p "Enter the name for this secret (or press Enter to skip): " secret_name
-        if [ -z "$secret_name" ]; then
-            secret_name="SECRET_$(date +%s)"
-        fi
-
-        read -p "Enter the secret string (or press Enter to generate one automatically): " secret_string
-
-        # Generate the secret
-        local generated_secret
-        generated_secret=$(generate_secret "$secret_string")
-
-        if [ -z "$generated_secret" ]; then
-            error_msg "Failed to generate secret. Skipping this file."
-            continue
-        fi
-
-        # Write to the secret file
-        if ! echo "$secret_name:$generated_secret" | sudo tee "$secrets_dir/$secret_file_name" >/dev/null; then
-            error_msg "Failed to write to secret file $secret_file_name"
-            continue
-        fi
-
-        # Set proper permissions
-        if ! sudo chmod 400 "$secrets_dir/$secret_file_name"; then
-            warning_msg "Failed to set permissions for $secret_file_name"
-        fi
-
-        # Set ownership to container_name:container_name
-        if ! sudo chown "$container_name:$container_name" "$secrets_dir/$secret_file_name"; then
-            warning_msg "Failed to set ownership for $secret_file_name"
-        fi
-
-        success_msg "Created secret file $secret_file_name with secret $secret_name"
-    done
-
-    success_msg "Finished creating secret files."
-}
-
 # Function to display error messages in red
 error_msg() {
     echo -e "${RED}[ERROR]${RESET} $1" >&2
@@ -610,14 +534,6 @@ create_container() {
         return 1
     fi
 
-    # If secrets directory wasn't created earlier, create it now
-    if [ ! -d "$base_dir/$container_name/secrets" ]; then
-        if ! sudo mkdir -p "$base_dir/$container_name/secrets"; then
-            error_msg "Failed to create secrets directory"
-            return 1
-        fi
-    fi
-
     # Create empty compose.yml file first
     info_msg "Creating empty compose.yml file..."
     if ! sudo touch "$base_dir/$container_name/compose.yml"; then
@@ -658,25 +574,6 @@ create_container() {
         error_msg "Failed to reapply permissions for $container_name"
         return 1
     }
-
-    # Ask if user wants to generate secrets
-    read -p "Do you want to generate any secrets for this container? (y/n): " generate_secrets
-    if [[ "$generate_secrets" =~ ^[Yy]$ ]]; then
-        # Check if argon2 is available and install if needed
-        if ! install_argon2; then
-            warning_msg "argon2 is required for secret generation but could not be installed."
-            warning_msg "Continuing without secret generation."
-        else
-            # Create secrets directory first
-            if ! sudo mkdir -p "$base_dir/$container_name/secrets"; then
-                error_msg "Failed to create secrets directory"
-                return 1
-            fi
-
-            # Create secret files
-            create_secret_files "$container_name" || warning_msg "Failed to create secret files"
-        fi
-    fi
 
     success_msg "Container $container_name created successfully."
     # Ask to run the container
@@ -805,7 +702,6 @@ while true; do
     echo -e "${GREEN}7. Browse and edit files${RESET}"
     echo -e "${GREEN}8. Add more appdata files${RESET}"
     echo -e "${GREEN}9. Reapply permissions to a container${RESET}"
-    echo -e "${GREEN}10. Generate secrets for a container${RESET}"
     echo -e "${RED}99. Remove a container${RESET}"
     echo -e "${BLUE}0. Exit${RESET}"
     separator
@@ -876,19 +772,6 @@ while true; do
                 error_msg "Container name cannot be empty."
             else
                 reapply_permissions "$container_name"
-            fi
-            ;;
-        10)
-            read -p "Enter the container name to generate secrets: " container_name
-            if [ -z "$container_name" ]; then
-                error_msg "Container name cannot be empty."
-            else
-                # Check if argon2 is available and install if needed
-                if ! install_argon2; then
-                    error_msg "argon2 is required for secret generation but could not be installed."
-                else
-                    create_secret_files "$container_name"
-                fi
             fi
             ;;
         99)
