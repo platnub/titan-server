@@ -54,6 +54,7 @@ list_containers() {
     header "Listing All Docker Containers"
     info_msg "Retrieving container information..."
     echo ""
+
     # Get list of container directories
     container_dirs=()
     if [ -d "$base_dir" ]; then
@@ -61,33 +62,49 @@ list_containers() {
             container_dirs+=("$dir")
         done < <(find "$base_dir" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" 2>/dev/null)
     fi
+
     # Display running containers
     echo -e "${GREEN}Running Containers:${RESET}"
     docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}" || error_msg "Failed to list running containers."
     echo ""
+
     # Display stopped containers
     echo -e "${YELLOW}Stopped Containers:${RESET}"
     docker ps -a --filter "status=exited" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}" || error_msg "Failed to list stopped containers."
     echo ""
+
     # Display created containers
     echo -e "${BLUE}Created Containers:${RESET}"
     docker ps -a --filter "status=created" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}" || error_msg "Failed to list created containers."
     echo ""
+
     # Compare container directories with actual containers
     echo -e "${MAGENTA}Container Directory Comparison:${RESET}"
     separator
+
     # Get list of container names from docker
-    names=()
+    container_names=()
     while IFS= read -r name; do
-        names+=("$name")
+        container_names+=("$name")
     done < <(docker ps -a --format "{{.Names}}" 2>/dev/null)
+
     # Check for directories without containers
     directories_without_containers=()
     for dir in "${container_dirs[@]}"; do
-        if [[ ! " ${container_names[@]} " =~ " ${dir} " ]]; then
+        # Check if the directory name matches any container name
+        found=0
+        for name in "${container_names[@]}"; do
+            if [[ "$dir" == "$name" ]]; then
+                found=1
+                break
+            fi
+        done
+
+        if [ $found -eq 0 ]; then
             directories_without_containers+=("$dir")
         fi
     done
+
     # Display directories without containers in red
     if [ ${#directories_without_containers[@]} -gt 0 ]; then
         echo -e "${RED}Directories without containers:${RESET}"
@@ -99,6 +116,35 @@ list_containers() {
         echo -e "${GREEN}All container directories have corresponding containers.${RESET}"
         echo ""
     fi
+
+    # Check for containers without directories
+    containers_without_directories=()
+    for name in "${container_names[@]}"; do
+        found=0
+        for dir in "${container_dirs[@]}"; do
+            if [[ "$name" == "$dir" ]]; then
+                found=1
+                break
+            fi
+        done
+
+        if [ $found -eq 0 ]; then
+            containers_without_directories+=("$name")
+        fi
+    done
+
+    # Display containers without directories in red
+    if [ ${#containers_without_directories[@]} -gt 0 ]; then
+        echo -e "${RED}Containers without directories:${RESET}"
+        for name in "${containers_without_directories[@]}"; do
+            echo -e "${RED}  - $name${RESET}"
+        done
+        echo ""
+    else
+        echo -e "${GREEN}All containers have corresponding directories.${RESET}"
+        echo ""
+    fi
+
     separator
 }
 # Function to wait for container to be fully running
