@@ -383,6 +383,13 @@ function advanced_settings() {
     else
       echo -e "${DEFAULT}${BOLD}${DGN}SSH Port: ${BGN}$SSH_PORT${CL}"
     fi
+    if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "IMPROVE FILE CACHING" --yesno --defaultno "Improve file caching for file servers? (Nextcloud, Jellyfin/Plex?" 10 58); then
+      echo -e "${GATEWAY}${BOLD}${DGN}Improve file caching: ${BGN}yes${CL}"
+      FILE_CACHING="yes"
+    else
+      echo -e "${GATEWAY}${BOLD}${DGN}Improve file caching: ${BGN}no${CL}"
+      FILE_CACHING="no"
+    fi
   else
     exit-script
   fi
@@ -504,6 +511,12 @@ msg_info "Installing, configuring and reloading UFW Firewall"
   virt-customize -q -a "${FILE}" --run-command "ufw allow ${SSH_PORT}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "ufw reload" >/dev/null
 msg_ok "UFW installed"
+  if [ "$FILE_CACHING" == "yes" ]; then
+    msg_info "Improving file caching"
+    virt-customize -q -a " echo -e 'vm.swappiness=10\nvm.vfs_cache_pressure = 50\nfs.inotify.max_user_watches=262144' >> /etc/sysctl.conf"
+    msg_ok "Improved file caching"
+  fi
+    success_msg "Machi
   virt-customize -q -a "${FILE}" --run-command "mkdir -p /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable' > /etc/apt/sources.list.d/docker.list" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin" >/dev/null &&
