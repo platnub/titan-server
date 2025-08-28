@@ -15,6 +15,7 @@ services:
       PUID: $PUID
       GUID: $GUID
       DOMAIN: 'https://b.example.com'
+      # Generating ADMIN_TOKEN - https://github.com/dani-garcia/vaultwarden/wiki/Enabling-admin-page
       ADMIN_TOKEN: $admin_token
       LOG_FILE: $CONTAINERDIR/logs/vaultwarden.log
       SIGNUPS_ALLOWED: false
