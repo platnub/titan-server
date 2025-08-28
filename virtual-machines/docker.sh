@@ -523,7 +523,7 @@ msg_ok "UFW installed"
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl enable docker" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "mkdir /opt/containers" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sudo sh -c "echo \"PUID=$puid\nPGID=$pgid\nDOCKERDIR=\"/opt/containers\"\nHOSTNAME=\"${HN}\"\"" > '$base_dir/$container_name/.env'" >/dev/null
+  virt-customize -q -a "${FILE}" --run-command "sudo sh -c "echo \"DOCKERDIR=\"/opt/containers\"\nHOSTNAME=\"${HN}\"\"" > '$base_dir/$container_name/.env'" >/dev/null
     success_msg "Docker installed"
 msg_info "Expanding root partition to use full disk space"
 qemu-img create -f qcow2 expanded.qcow2 ${DISK_SIZE} >/dev/null 2>&1
