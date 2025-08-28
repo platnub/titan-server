@@ -19,5 +19,5 @@ services:
       - vaultwarden_default
     environment:
       - PANGOLIN_ENDPOINT=https://pangolin.example.com
-      - NEWT_ID=$NEWT_ID
-      - NEWT_SECRET=$NEWT_SECRET
+      - NEWT_ID=${NEWT_ID}
+      - NEWT_SECRET=${NEWT_SECRET}
