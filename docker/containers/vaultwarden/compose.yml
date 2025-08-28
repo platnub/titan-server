@@ -1,8 +1,3 @@
-########################### SECRETS
-secrets:
-  basic_auth_credentials:
-    file: $CONTAINERDIR/secrets/admin
-
 ########################### NETWORKS
 networks:
   vaultwarden:
@@ -17,7 +12,26 @@ services:
    ports:
       - '80:80'
     environment:
-      DOMAIN: "https://b.example.com"
-      ADMIN_TOKEN: admin_token
+      PUID: $PUID
+      GUID: $GUID
+      DOMAIN: 'https://b.example.com'
+      ADMIN_TOKEN: $admin_token
+      LOG_FILE: $CONTAINERDIR/logs/vaultwarden.log
+      SIGNUPS_ALLOWED: false
+      SHOW_PASSWORD_HINT: false
+      # Email settings - https://github.com/dani-garcia/vaultwarden/wiki/SMTP-Configuration
+      SMTP_HOST: 'mail.example.com'
+      SMTP_FROM: 'admin@example.com'
+      SMTP_PORT: '465'
+      SMTP_SECURITY: 'force_tls'
+      SMTP_USERNAME: 'admin@example.com'
+      SMTP_PASSWORD: $SMTP_PASSWORD
+      # Mobile Push Notifications (Auto syncing vault) - https://github.com/dani-garcia/vaultwarden/wiki/Enabling-Mobile-Client-push-notification
+      PUSH_ENABLED: true
+      PUSH_INSTALLATION_ID: $PUSH_INSTALLATION_ID
+      PUSH_INSTALLATION_KEY: $PUSH_INSTALLATION_KEY
+      # EU settings
+      PUSH_RELAY_URI: 'https://api.bitwarden.eu'
+      PUSH_IDENTITY_URI: 'https://identity.bitwarden.eu'
     volumes:
       - $CONTAINERDIR/appdata/data/:/data/
