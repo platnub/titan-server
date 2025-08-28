@@ -54,6 +54,8 @@ generate_secret() {
         # Generate a random string if none provided
         random_string=$(openssl rand -base64 32)
         secret_string=$(echo -n "MySecretPassword" | argon2 "$random_string" -e -id -k 19456 -t 2 -p 1 | sed 's#\$#\$\$#g')
+    else
+        secret_string=$(echo -n "MySecretPassword" | argon2 "$secret_string" -e -id -k 19456 -t 2 -p 1 | sed 's#\$#\$\$#g')
     fi
 
     echo "$secret_string"
@@ -636,7 +638,7 @@ create_container() {
     puid=$(id -u "$container_name" 2>/dev/null)
     pgid=$(id -g "$container_name" 2>/dev/null)
 
-    if ! sudo sh -c "echo \"PUID=$puid\nPGID=$pgid\nTZ=Europe/Amsterdam\nDATADIR=/opt/containers/$container_name/appdata\nDOCKERDIR=/opt/containers\" > '$base_dir/$container_name/.env'"; then
+    if ! sudo sh -c "echo \"PUID=$puid\nPGID=$pgid\nTZ=Europe/Amsterdam\nCONTAINERDIR=/opt/containers/$container_name\nDOCKERDIR=/opt/containers\" > '$base_dir/$container_name/.env'"; then
         error_msg "Failed to create .env file"
         return 1
     fi
