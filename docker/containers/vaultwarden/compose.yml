@@ -17,4 +17,4 @@ services:
       DOMAIN: "https://b.example.com"
       ADMIN_TOKEN: admin_token
     volumes:
-      - $DOCKERDIR/vaultwarden/appdata/data/:/data/
+      - $DATADIR/data/:/data/
