@@ -4,9 +4,9 @@ services:
     image: fosrl/newt
     container_name: newt
     restart: unless-stopped
+    hostname: pangolin
     networks:
       vaultwarden:
-        hostname: pangolin
     environment:
       - PANGOLIN_ENDPOINT=https://pangolin.example.com
       - NEWT_ID=$SECRET_ID
