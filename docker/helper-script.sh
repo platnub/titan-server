@@ -1,6 +1,6 @@
 #!/bin/bash
-# Script: Podman Container Management
-# Description: A comprehensive script to manage Podman containers with proper error handling and user feedback
+# Script: Docker Container Management
+# Description: A comprehensive script to manage Docker containers with proper error handling and user feedback
 # Author: [Your Name]
 # Version: 1.0
 # Base directory for all container data
@@ -51,10 +51,9 @@ header() {
 }
 # Function to list all containers and compare with directories
 list_containers() {
-    header "Listing All Podman Containers"
+    header "Listing All Docker Containers"
     info_msg "Retrieving container information..."
     echo ""
-
     # Get list of container directories
     container_dirs=()
     if [ -d "$base_dir" ]; then
@@ -62,32 +61,26 @@ list_containers() {
             container_dirs+=("$dir")
         done < <(find "$base_dir" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" 2>/dev/null)
     fi
-
     # Display running containers
     echo -e "${GREEN}Running Containers:${RESET}"
-    podman ps --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}" || error_msg "Failed to list running containers."
+    docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}" || error_msg "Failed to list running containers."
     echo ""
-
     # Display stopped containers
     echo -e "${YELLOW}Stopped Containers:${RESET}"
-    podman ps -a --filter "status=exited" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}" || error_msg "Failed to list stopped containers."
+    docker ps -a --filter "status=exited" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}" || error_msg "Failed to list stopped containers."
     echo ""
-
     # Display created containers
     echo -e "${BLUE}Created Containers:${RESET}"
-    podman ps -a --filter "status=created" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}" || error_msg "Failed to list created containers."
+    docker ps -a --filter "status=created" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}" || error_msg "Failed to list created containers."
     echo ""
-
     # Compare container directories with actual containers
     echo -e "${MAGENTA}Container Directory Comparison:${RESET}"
     separator
-
-    # Get list of container names from podman
+    # Get list of container names from docker
     names=()
     while IFS= read -r name; do
         names+=("$name")
-    done < <(podman ps -a --format "{{.Names}}" 2>/dev/null)
-
+    done < <(docker ps -a --format "{{.Names}}" 2>/dev/null)
     # Check for directories without containers
     directories_without_containers=()
     for dir in "${container_dirs[@]}"; do
@@ -95,7 +88,6 @@ list_containers() {
             directories_without_containers+=("$dir")
         fi
     done
-
     # Display directories without containers in red
     if [ ${#directories_without_containers[@]} -gt 0 ]; then
         echo -e "${RED}Directories without containers:${RESET}"
@@ -107,10 +99,8 @@ list_containers() {
         echo -e "${GREEN}All container directories have corresponding containers.${RESET}"
         echo ""
     fi
-
     separator
 }
-
 # Function to wait for container to be fully running
 wait_for_container_running() {
     local container_name=$1
@@ -121,10 +111,10 @@ wait_for_container_running() {
     info_msg "Waiting for container $container_name to be fully running..."
     while [ $attempt -lt $max_attempts ]; do
         # Get container status
-        status=$(podman inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
+        status=$(docker inspect -f '{{.State.Status}}' "$container_name" 2>/dev/null)
         if [ "$status" = "running" ]; then
             # Check if the container has a health check
-            health_status=$(podman inspect -f '{{.State.Health.Status}}' "$container_name" 2>/dev/null)
+            health_status=$(docker inspect -f '{{.State.Health.Status}}' "$container_name" 2>/dev/null)
             if [ -n "$health_status" ] && [ "$health_status" != "healthy" ]; then
                 # If there's a health check but it's not healthy yet
                 warning_msg "Container $container_name is running but health check is $health_status..."
@@ -136,11 +126,11 @@ wait_for_container_running() {
         elif [ "$status" = "exited" ] || [ "$status" = "dead" ]; then
             error_msg "Container $container_name is in $status state."
             # Get exit code for more detailed error
-            exit_code=$(podman inspect -f '{{.State.ExitCode}}' "$container_name" 2>/dev/null)
+            exit_code=$(docker inspect -f '{{.State.ExitCode}}' "$container_name" 2>/dev/null)
             if [ -n "$exit_code" ] && [ "$exit_code" -ne 0 ]; then
                 error_msg "Container exited with code $exit_code"
                 echo "Container logs:"
-                podman logs "$container_name" 2>&1 || warning_msg "Could not retrieve container logs."
+                docker logs "$container_name" 2>&1 || warning_msg "Could not retrieve container logs."
             fi
             return 1
         fi
@@ -150,14 +140,14 @@ wait_for_container_running() {
     error_msg "Timeout waiting for container $container_name to start."
     echo "Current status: $status"
     echo "Container logs:"
-    podman logs "$container_name" 2>&1 || warning_msg "Could not retrieve container logs."
+    docker logs "$container_name" 2>&1 || warning_msg "Could not retrieve container logs."
     return 1
 }
 # Function to run a container
 start_container() {
     local container_name=$1
     # Check if container exists
-    if ! podman inspect "$container_name" &>/dev/null; then
+    if ! docker inspect "$container_name" &>/dev/null; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
@@ -167,7 +157,7 @@ start_container() {
     }
     # Start the container
     info_msg "Starting container $container_name..."
-    if ! podman start "$container_name"; then
+    if ! docker start "$container_name"; then
         error_msg "Failed to start container $container_name"
         return 1
     fi
@@ -176,10 +166,10 @@ start_container() {
         error_msg "Container $container_name did not start properly."
         # Check container logs for errors
         echo "Container logs:"
-        podman logs "$container_name" 2>&1 || warning_msg "Could not retrieve container logs."
+        docker logs "$container_name" 2>&1 || warning_msg "Could not retrieve container logs."
         # Try to restart the container if it failed
         warning_msg "Attempting to restart container $container_name..."
-        if ! podman restart "$container_name"; then
+        if ! docker restart "$container_name"; then
             error_msg "Failed to restart container $container_name"
             return 1
         fi
@@ -189,23 +179,18 @@ start_container() {
             return 1
         fi
     fi
-    update_rootless_user "$container_name" || warning_msg "Failed to update rootless user for $container_name"
     success_msg "Container $container_name started successfully."
 }
 # Function to stop a container
 stop_container() {
     local container_name=$1
     # Check if container exists
-    if ! podman inspect "$container_name" &>/dev/null; then
+    if ! docker inspect "$container_name" &>/dev/null; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
-    # Only update .env if this was called from option 3 in the menu
-    if [[ "$choice" == "3" ]]; then
-        update_rootless_user "$container_name" || warning_msg "Failed to update rootless user for $container_name"
-    fi
     info_msg "Stopping container $container_name..."
-    if ! podman stop "$container_name"; then
+    if ! docker stop "$container_name"; then
         error_msg "Failed to stop container $container_name"
         return 1
     fi
@@ -342,11 +327,6 @@ manage_files() {
                         error_msg "Failed to create file $file_path"
                         continue
                     fi
-                    if [ -n "$rootless_user" ]; then
-                        if ! podman unshare chown "$rootless_user:$rootless_user" "$file_path"; then
-                            warning_msg "Failed to set ownership for $file_path"
-                        fi
-                    fi
                 else
                     if ! touch "$file_path"; then
                         error_msg "Failed to create file $file_path"
@@ -388,13 +368,12 @@ manage_files() {
 decompose_container() {
     local container_name=$1
     # Check if container exists
-    if ! podman inspect "$container_name" &>/dev/null; then
+    if ! docker inspect "$container_name" &>/dev/null; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
-    update_rootless_user "$container_name" || warning_msg "Failed to update rootless user for $container_name"
     info_msg "Decomposing container $container_name..."
-    if ! podman-compose --file "$base_dir/$container_name/compose.yml" down; then
+    if ! docker-compose --file "$base_dir/$container_name/compose.yml" down; then
         error_msg "Failed to decompose container $container_name"
         return 1
     fi
@@ -413,7 +392,7 @@ compose_container() {
         error_msg "Failed to reapply permissions for $container_name"
         return 1
     }
-    if ! podman-compose --file "$base_dir/$container_name/compose.yml" up --detach; then
+    if ! docker-compose --file "$base_dir/$container_name/compose.yml" up --detach; then
         error_msg "Failed to compose container $container_name"
         return 1
     fi
@@ -422,7 +401,6 @@ compose_container() {
         error_msg "Container $container_name did not start properly after composition."
         return 1
     fi
-    update_rootless_user "$container_name" || warning_msg "Failed to update rootless user for $container_name"
     success_msg "Container $container_name composed successfully."
 }
 # Function to create a new container
@@ -452,14 +430,12 @@ create_container() {
         error_msg "Failed to create empty compose.yml file"
         return 1
     fi
-
     # Edit compose.yml file
     info_msg "Editing compose.yml file..."
     if ! sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yml"; then
         error_msg "Failed to edit compose.yml file"
         return 1
     fi
-
     # Create .env file
     info_msg "Creating .env file..."
     if ! sudo sh -c "echo \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"; then
@@ -495,38 +471,29 @@ reapply_permissions() {
         return 1
     fi
     info_msg "Applying permissions to container $container_name..."
+
+    # Apply permissions to the entire container folder
+    if ! sudo chown -R "$container_name:$container_name" "$base_dir/$container_name"; then
+        error_msg "Failed to change ownership to $container_name:$container_name"
+        return 1
+    fi
+
     # Set directory permissions
-    if ! (sudo chmod 700 "$base_dir/$container_name" &&
-          sudo chmod 700 "$base_dir/$container_name/appdata" &&
-          sudo chmod 700 "$base_dir/$container_name/logs" &&
+    if ! (sudo chmod -R 700 "$base_dir/$container_name" &&
           sudo chmod 400 "$base_dir/$container_name/secrets" &&
           sudo chmod 400 "$base_dir/$container_name/compose.yml" &&
           sudo chmod 400 "$base_dir/$container_name/.env"); then
         error_msg "Failed to set directory permissions"
         return 1
     fi
-    # Change ownership to podman user
-    if ! sudo chown -R podman:podman "$base_dir/$container_name"; then
-        error_msg "Failed to change ownership to podman user"
-        return 1
-    fi
-    # Load rootless_user if it exists
-    if [ -f "$base_dir/$container_name/.env" ]; then
-        load_rootless_user "$container_name" || warning_msg "Failed to load rootless user from .env"
-        if [ -n "$rootless_user" ]; then
-            # Use podman unshare to change ownership inside the container's user namespace
-            if ! podman unshare chown -R "$rootless_user:$rootless_user" "$base_dir/$container_name/appdata/"; then
-                warning_msg "Failed to set appdata ownership for rootless user"
-            fi
-        fi
-    fi
+
     success_msg "Permissions applied successfully."
 }
 # Function to remove a container
 remove_container() {
     local container_name=$1
     # Check if container exists
-    if ! podman inspect "$container_name" &>/dev/null; then
+    if ! docker inspect "$container_name" &>/dev/null; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
@@ -534,7 +501,7 @@ remove_container() {
     stop_container "$container_name" || warning_msg "Failed to stop container $container_name"
     # Remove the container
     info_msg "Removing container $container_name..."
-    if ! podman rm "$container_name"; then
+    if ! docker rm "$container_name"; then
         error_msg "Failed to remove container $container_name"
         return 1
     fi
@@ -583,18 +550,16 @@ create_appdata_folders() {
         if ! sudo chmod 700 "$appdata_dir/$folder_name"; then
             warning_msg "Failed to set permissions for $folder_name"
         fi
-        # Set ownership if rootless_user is defined
-        if [ -n "$rootless_user" ]; then
-            if ! podman unshare chown "$rootless_user:$rootless_user" "$appdata_dir/$folder_name"; then
-                warning_msg "Failed to set ownership for $folder_name"
-            fi
+        # Set ownership to container_name:container_name
+        if ! sudo chown "$container_name:$container_name" "$appdata_dir/$folder_name"; then
+            warning_msg "Failed to set ownership for $folder_name"
         fi
     done
     success_msg "Finished creating additional folders in appdata directory."
 }
 # Main menu
 while true; do
-    header "Podman Container Management Menu"
+    header "Docker Container Management Menu"
     echo -e "${GREEN}1. List all containers${RESET}"
     echo -e "${GREEN}2. Start a container${RESET}"
     echo -e "${GREEN}3. Stop a container${RESET}"
