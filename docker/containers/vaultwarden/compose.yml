@@ -1,8 +1,12 @@
+########################### SERVICES
 services:
   vaultwarden:
     image: vaultwarden/server:latest
     container_name: vaultwarden
     restart: always
+    network:
+      vaultwarden:
+        hostname: vaultwarden
     environment:
       DOMAIN: "https://vw.domain.tld"
     volumes:
