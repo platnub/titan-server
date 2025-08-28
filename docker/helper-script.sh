@@ -52,23 +52,13 @@ generate_secret() {
     local secret_string=$1
     if [ -z "$secret_string" ]; then
         # Generate a random string if none provided
-        secret_string=$(openssl rand -base64 32)
+        secret_string=argon2 "$(openssl rand -base64 32)" -e -id -k 19456 -t 2 -p 1
     fi
 
     # Escape $ characters in the secret string
     secret_string=${secret_string//\$/$$}
 
-    # Hash the string with argon2
-    local hashed_secret=$(argon2 "$secret_string" -e -id -k 19456 -t 2 -p 1 2>/dev/null)
-    if [ -z "$hashed_secret" ]; then
-        error_msg "Failed to generate secret with argon2."
-        return 1
-    fi
-
-    # Escape $ characters in the hashed secret
-    hashed_secret=${hashed_secret//\$/$$}
-
-    echo "$hashed_secret"
+    echo "$secret_string"
     return 0
 }
 
