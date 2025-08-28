@@ -659,7 +659,11 @@ create_container() {
 
     # Create .env file
     info_msg "Creating .env file..."
-    if ! sudo sh -c "echo \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"; then
+    # Get the actual user and group IDs for the container user
+    puid=$(id -u "$container_name" 2>/dev/null)
+    pgid=$(id -g "$container_name" 2>/dev/null)
+
+    if ! sudo sh -c "echo \"PUID=$puid\nPGID=$pgid\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"; then
         error_msg "Failed to create .env file"
         return 1
     fi
