@@ -499,7 +499,7 @@ msg_ok "Installing Docker"
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl enable docker" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "mkdir /opt/containers" >/dev/null &&
-success_msg "Docker installed"
+msg_ok "Docker installed"
 msg_info "Creating Docker user and locking root user"
   virt-customize -q -a "${FILE}" --run-command "useradd -r ${HN}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "adduser ${HN} sudo" >/dev/null &&
