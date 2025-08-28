@@ -373,7 +373,7 @@ decompose_container() {
         return 1
     fi
     info_msg "Decomposing container $container_name..."
-    if ! docker-compose --file "$base_dir/$container_name/compose.yml" down; then
+    if ! docker compose --file "$base_dir/$container_name/compose.yml" down; then
         error_msg "Failed to decompose container $container_name"
         return 1
     fi
@@ -392,7 +392,7 @@ compose_container() {
         error_msg "Failed to reapply permissions for $container_name"
         return 1
     }
-    if ! docker-compose --file "$base_dir/$container_name/compose.yml" up --detach; then
+    if ! docker compose --file "$base_dir/$container_name/compose.yml" up --detach; then
         error_msg "Failed to compose container $container_name"
         return 1
     fi
