@@ -9,6 +9,6 @@ services:
       vaultwarden:
         ports: '80:80'
     environment:
-      DOMAIN: "https://vw.domain.tld"
+      DOMAIN: "https://b.example.com"
     volumes:
       - ./appdata/data/:/data/
