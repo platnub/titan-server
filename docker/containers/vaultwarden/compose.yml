@@ -12,7 +12,8 @@ services:
     hostname: vaultwarden
     networks:
       vaultwarden:
-        ports: '80:80'
+   ports:
+      - '80:80'
     environment:
       DOMAIN: "https://b.example.com"
       ADMIN_TOKEN: admin_token
