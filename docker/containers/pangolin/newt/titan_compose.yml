@@ -22,5 +22,5 @@ services:
       - NEWT_SECRET
     environment:
       - PANGOLIN_ENDPOINT=https://pangolin.example.com
-      - NEWT_ID=${NEWT_ID}
-      - NEWT_SECRET=${NEWT_SECRET}
+      - NEWT_ID_FILE=/run/secrets/NEWT_ID
+      - NEWT_SECRET=/run/secrets/NEWT_SECRET
