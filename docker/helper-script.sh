@@ -587,25 +587,6 @@ create_container() {
         fi
     fi
 
-    # Ask if user wants to generate secrets
-    read -p "Do you want to generate any secrets for this container? (y/n): " generate_secrets
-    if [[ "$generate_secrets" =~ ^[Yy]$ ]]; then
-        # Check if argon2 is available and install if needed
-        if ! install_argon2; then
-            warning_msg "argon2 is required for secret generation but could not be installed."
-            warning_msg "Continuing without secret generation."
-        else
-            # Create secrets directory first
-            if ! sudo mkdir -p "$base_dir/$container_name/secrets"; then
-                error_msg "Failed to create secrets directory"
-                return 1
-            fi
-
-            # Create secret files
-            create_secret_files "$container_name" || warning_msg "Failed to create secret files"
-        fi
-    fi
-
     # Create a new system user for the container
     info_msg "Creating system user for container $container_name..."
     if ! sudo useradd -s /usr/sbin/nologin "$container_name"; then
@@ -677,6 +658,25 @@ create_container() {
         error_msg "Failed to reapply permissions for $container_name"
         return 1
     }
+
+    # Ask if user wants to generate secrets
+    read -p "Do you want to generate any secrets for this container? (y/n): " generate_secrets
+    if [[ "$generate_secrets" =~ ^[Yy]$ ]]; then
+        # Check if argon2 is available and install if needed
+        if ! install_argon2; then
+            warning_msg "argon2 is required for secret generation but could not be installed."
+            warning_msg "Continuing without secret generation."
+        else
+            # Create secrets directory first
+            if ! sudo mkdir -p "$base_dir/$container_name/secrets"; then
+                error_msg "Failed to create secrets directory"
+                return 1
+            fi
+
+            # Create secret files
+            create_secret_files "$container_name" || warning_msg "Failed to create secret files"
+        fi
+    fi
 
     success_msg "Container $container_name created successfully."
     # Ask to run the container
