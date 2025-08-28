@@ -11,7 +11,7 @@ services:
     restart: unless-stopped
     hostname: pangolin
     networks:
-      - vaultwarden
+      - vaultwarden_default
     environment:
       - PANGOLIN_ENDPOINT=https://pangolin.example.com
       - NEWT_ID=$NEWT_ID
