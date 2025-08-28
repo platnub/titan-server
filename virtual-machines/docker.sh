@@ -517,10 +517,14 @@ msg_ok "UFW installed"
     msg_ok "Improved file caching"
   fi
     success_msg "Machi
+    msg_ok "Installing Docker"
   virt-customize -q -a "${FILE}" --run-command "mkdir -p /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable' > /etc/apt/sources.list.d/docker.list" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl enable docker" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "mkdir /opt/containers" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "sudo sh -c "echo \"PUID=$puid\nPGID=$pgid\nDOCKERDIR=\"/opt/containers\"\nHOSTNAME=\"${HN}\"\"" > '$base_dir/$container_name/.env'" >/dev/null
+    success_msg "Docker installed"
 msg_info "Expanding root partition to use full disk space"
 qemu-img create -f qcow2 expanded.qcow2 ${DISK_SIZE} >/dev/null 2>&1
 virt-resize --expand /dev/sda1 ${FILE} expanded.qcow2 >/dev/null 2>&1
