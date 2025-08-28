@@ -9,7 +9,7 @@ services:
     container_name: vaultwarden
     restart: always
     hostname: vaultwarden
-   ports:
+    ports:
       - '80:80'
     environment:
       PUID: $PUID
