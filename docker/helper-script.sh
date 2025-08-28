@@ -53,11 +53,8 @@ generate_secret() {
     if [ -z "$secret_string" ]; then
         # Generate a random string if none provided
         random_string=$(openssl rand -base64 32)
-        secret_string=$(argon2 "$random_string" -e -id -k 19456 -t 2 -p 1)
+        secret_string=$(argon2 "$random_string" -e -id -k 19456 -t 2 -p 1 | sed 's#\$#\$\$#g')
     fi
-
-    # Escape $ characters in the secret string
-    secret_string=${secret_string//\$/$$}
 
     echo "$secret_string"
     return 0
