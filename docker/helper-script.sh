@@ -796,7 +796,7 @@ create_appdata_folders() {
 # Main menu
 while true; do
     header "Docker Container Management Menu"
-    echo -e "${GREEN}1. List all containerss${RESET}"
+    echo -e "${GREEN}1. List all containers${RESET}"
     echo -e "${GREEN}2. Start a container${RESET}"
     echo -e "${GREEN}3. Stop a container${RESET}"
     echo -e "${GREEN}4. Create a new container${RESET}"
