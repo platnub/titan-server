@@ -14,34 +14,157 @@ MAGENTA='\033[1;35m'
 CYAN='\033[1;36m'
 WHITE='\033[1;37m'
 RESET='\033[0m'
+
+# Function to install argon2 if not available
+install_argon2() {
+    if ! command -v argon2 &> /dev/null; then
+        info_msg "argon2 not found. Attempting to install..."
+        if command -v apt-get &> /dev/null; then
+            if sudo apt-get update && sudo apt-get install -y argon2; then
+                success_msg "argon2 installed successfully."
+                return 0
+            else
+                error_msg "Failed to install argon2 using apt-get."
+            fi
+        elif command -v yum &> /dev/null; then
+            if sudo yum install -y argon2; then
+                success_msg "argon2 installed successfully."
+                return 0
+            else
+                error_msg "Failed to install argon2 using yum."
+            fi
+        elif command -v dnf &> /dev/null; then
+            if sudo dnf install -y argon2; then
+                success_msg "argon2 installed successfully."
+                return 0
+            else
+                error_msg "Failed to install argon2 using dnf."
+            fi
+        else
+            error_msg "Could not determine package manager to install argon2."
+        fi
+        return 1
+    fi
+    return 0
+}
+
+# Function to generate a secret using argon2
+generate_secret() {
+    local secret_string=$1
+    if [ -z "$secret_string" ]; then
+        # Generate a random string if none provided
+        secret_string=$(openssl rand -base64 32)
+    fi
+
+    # Hash the string with argon2
+    local hashed_secret=$(argon2 "$secret_string" -e -id -k 19456 -t 2 -p 1 2>/dev/null)
+
+    if [ -z "$hashed_secret" ]; then
+        error_msg "Failed to generate secret with argon2."
+        return 1
+    fi
+
+    echo "$hashed_secret"
+    return 0
+}
+
+# Function to create secret files
+create_secret_files() {
+    local container_name=$1
+    local secrets_dir="$base_dir/$container_name/secrets"
+
+    # Check if secrets directory exists
+    if [ ! -d "$secrets_dir" ]; then
+        error_msg "Secrets directory $secrets_dir does not exist."
+        return 1
+    fi
+
+    info_msg "Creating secret files for container $container_name..."
+
+    while true; do
+        read -p "Enter the name of the secret file (or press Enter to finish): " secret_file_name
+        if [ -z "$secret_file_name" ]; then
+            break
+        fi
+
+        # Check if file already exists
+        if [ -f "$secrets_dir/$secret_file_name" ]; then
+            warning_msg "File $secret_file_name already exists. Overwriting..."
+        fi
+
+        read -p "Enter the name for this secret (or press Enter to skip): " secret_name
+        if [ -z "$secret_name" ]; then
+            secret_name="SECRET_$(date +%s)"
+        fi
+
+        read -p "Enter the secret string (or press Enter to generate one automatically): " secret_string
+
+        # Generate the secret
+        local generated_secret
+        generated_secret=$(generate_secret "$secret_string")
+
+        if [ -z "$generated_secret" ]; then
+            error_msg "Failed to generate secret. Skipping this file."
+            continue
+        fi
+
+        # Write to the secret file
+        if ! echo "$secret_name:$generated_secret" | sudo tee "$secrets_dir/$secret_file_name" >/dev/null; then
+            error_msg "Failed to write to secret file $secret_file_name"
+            continue
+        fi
+
+        # Set proper permissions
+        if ! sudo chmod 400 "$secrets_dir/$secret_file_name"; then
+            warning_msg "Failed to set permissions for $secret_file_name"
+        fi
+
+        # Set ownership to container_name:container_name
+        if ! sudo chown "$container_name:$container_name" "$secrets_dir/$secret_file_name"; then
+            warning_msg "Failed to set ownership for $secret_file_name"
+        fi
+
+        success_msg "Created secret file $secret_file_name with secret $secret_name"
+    done
+
+    success_msg "Finished creating secret files."
+}
+
 # Function to display error messages in red
 error_msg() {
     echo -e "${RED}[ERROR]${RESET} $1" >&2
 }
+
 # Function to display warning messages in yellow
 warning_msg() {
     echo -e "${YELLOW}[WARNING]${RESET} $1"
 }
+
 # Function to display informational messages in green
 info_msg() {
     echo -e "${GREEN}[INFO]${RESET} $1"
 }
+
 # Function to display success messages in blue
 success_msg() {
     echo -e "${BLUE}[SUCCESS]${RESET} $1"
 }
+
 # Function to display important messages in magenta
 important_msg() {
     echo -e "${MAGENTA}[IMPORTANT]${RESET} $1"
 }
+
 # Function to display debug messages in cyan
 debug_msg() {
     echo -e "${CYAN}[DEBUG]${RESET} $1"
 }
+
 # Function to display a separator line
 separator() {
     echo -e "${WHITE}---------------------------------------------${RESET}"
 }
+
 # Function to display a header
 header() {
     clear
@@ -49,6 +172,7 @@ header() {
     echo -e "${WHITE}${1}${RESET}"
     separator
 }
+
 # Function to list all containers and compare with directories
 list_containers() {
     header "Listing All Docker Containers"
@@ -147,6 +271,7 @@ list_containers() {
 
     separator
 }
+
 # Function to wait for container to be fully running
 wait_for_container_running() {
     local container_name=$1
@@ -189,6 +314,7 @@ wait_for_container_running() {
     docker logs "$container_name" 2>&1 || warning_msg "Could not retrieve container logs."
     return 1
 }
+
 # Function to run a container
 start_container() {
     local container_name=$1
@@ -227,6 +353,7 @@ start_container() {
     fi
     success_msg "Container $container_name started successfully."
 }
+
 # Function to stop a container
 stop_container() {
     local container_name=$1
@@ -242,6 +369,7 @@ stop_container() {
     fi
     success_msg "Container $container_name stopped successfully."
 }
+
 # Function to manage files (browse, edit, create, delete)
 manage_files() {
     local container_name=$1
@@ -410,6 +538,7 @@ manage_files() {
         fi
     done
 }
+
 # Function to decompose a container (stop and remove containers)
 decompose_container() {
     local container_name=$1
@@ -425,6 +554,7 @@ decompose_container() {
     fi
     success_msg "Container $container_name decomposed successfully."
 }
+
 # Function to compose a container (start containers)
 compose_container() {
     local container_name=$1
@@ -449,6 +579,7 @@ compose_container() {
     fi
     success_msg "Container $container_name composed successfully."
 }
+
 # Function to create a new container
 create_container() {
     local container_name=$1
@@ -459,6 +590,25 @@ create_container() {
         if [[ ! "$overwrite" =~ ^[Yy]$ ]]; then
             info_msg "Container creation cancelled."
             return 1
+        fi
+    fi
+
+    # Ask if user wants to generate secrets
+    read -p "Do you want to generate any secrets for this container? (y/n): " generate_secrets
+    if [[ "$generate_secrets" =~ ^[Yy]$ ]]; then
+        # Check if argon2 is available and install if needed
+        if ! install_argon2; then
+            warning_msg "argon2 is required for secret generation but could not be installed."
+            warning_msg "Continuing without secret generation."
+        else
+            # Create secrets directory first
+            if ! sudo mkdir -p "$base_dir/$container_name/secrets"; then
+                error_msg "Failed to create secrets directory"
+                return 1
+            fi
+
+            # Create secret files
+            create_secret_files "$container_name" || warning_msg "Failed to create secret files"
         fi
     fi
 
@@ -480,10 +630,17 @@ create_container() {
     info_msg "Creating container directories..."
     if ! (sudo mkdir -p "$base_dir/$container_name" &&
           sudo mkdir -p "$base_dir/$container_name/appdata" &&
-          sudo mkdir -p "$base_dir/$container_name/logs" &&
-          sudo mkdir -p "$base_dir/$container_name/secrets"); then
+          sudo mkdir -p "$base_dir/$container_name/logs"); then
         error_msg "Failed to create container directories"
         return 1
+    fi
+
+    # If secrets directory wasn't created earlier, create it now
+    if [ ! -d "$base_dir/$container_name/secrets" ]; then
+        if ! sudo mkdir -p "$base_dir/$container_name/secrets"; then
+            error_msg "Failed to create secrets directory"
+            return 1
+        fi
     fi
 
     # Create empty compose.yml file first
@@ -530,6 +687,7 @@ create_container() {
         compose_container "$container_name" || error_msg "Failed to compose container $container_name"
     fi
 }
+
 # Apply user permissions
 reapply_permissions() {
     local container_name=$1
@@ -557,6 +715,7 @@ reapply_permissions() {
 
     success_msg "Permissions applied successfully."
 }
+
 # Function to remove a container
 remove_container() {
     local container_name=$1
@@ -599,6 +758,7 @@ remove_container() {
     fi
     success_msg "Container $container_name removed successfully."
 }
+
 # Function to create appdata folders
 create_appdata_folders() {
     local container_name=$1
@@ -634,6 +794,7 @@ create_appdata_folders() {
     done
     success_msg "Finished creating additional folders in appdata directory."
 }
+
 # Main menu
 while true; do
     header "Docker Container Management Menu"
@@ -646,10 +807,11 @@ while true; do
     echo -e "${GREEN}7. Browse and edit files${RESET}"
     echo -e "${GREEN}8. Add more appdata files${RESET}"
     echo -e "${GREEN}9. Reapply permissions to a container${RESET}"
+    echo -e "${GREEN}10. Generate secrets for a container${RESET}"
     echo -e "${RED}99. Remove a container${RESET}"
     echo -e "${BLUE}0. Exit${RESET}"
     separator
-    read -p "Enter your choice (0-9, 99): " choice
+    read -p "Enter your choice (0-10, 99): " choice
     case $choice in
         1)
             list_containers
@@ -718,6 +880,19 @@ while true; do
                 reapply_permissions "$container_name"
             fi
             ;;
+        10)
+            read -p "Enter the container name to generate secrets: " container_name
+            if [ -z "$container_name" ]; then
+                error_msg "Container name cannot be empty."
+            else
+                # Check if argon2 is available and install if needed
+                if ! install_argon2; then
+                    error_msg "argon2 is required for secret generation but could not be installed."
+                else
+                    create_secret_files "$container_name"
+                fi
+            fi
+            ;;
         99)
             read -p "Enter the container name to remove: " container_name
             if [ -z "$container_name" ]; then
@@ -731,7 +906,7 @@ while true; do
             exit 0
             ;;
         *)
-            error_msg "Invalid choice. Please enter a number between 0 and 9, or 99."
+            error_msg "Invalid choice. Please enter a number between 0 and 10, or 99."
             ;;
     esac
     read -p "Press Enter to continue..."
