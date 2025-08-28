@@ -3,7 +3,7 @@ secrets:
   basic_auth_credentials:
     file: $DOCKERDIR/secrets/newt
 
-########################### SECRETS
+########################### NETWORKS
 networks:
   vaultwarden_default:
     external: true
