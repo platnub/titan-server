@@ -22,7 +22,7 @@ services:
       - ./.env
     security_opt:
       - no-new-privileges:true
-    restart: unless-stopped
+    restart: restart
     networks:
       socket_proxy:
         ipv4_address: 192.168.0.254 # You can specify a static IP
