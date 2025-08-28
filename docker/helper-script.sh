@@ -614,22 +614,42 @@ reapply_permissions() {
 # Function to remove a container
 remove_container() {
     local container_name=$1
+    local step_success=true
+
     # Check if container exists
     if ! docker inspect "$container_name" &>/dev/null; then
         error_msg "Container $container_name does not exist."
         return 1
     fi
-    # Stop the container first
-    stop_container "$container_name" || warning_msg "Failed to stop container $container_name"
-    # Remove the container
-    info_msg "Removing container $container_name..."
+
+    # Step 1: Stop the container
+    info_msg "Step 1: Stopping container $container_name..."
+    if ! docker stop "$container_name"; then
+        warning_msg "Failed to stop container $container_name"
+        step_success=false
+    else
+        success_msg "Container $container_name stopped successfully."
+    fi
+
+    # Step 2: Remove the container
+    info_msg "Step 2: Removing container $container_name..."
     if ! docker rm "$container_name"; then
         error_msg "Failed to remove container $container_name"
-        return 1
+        step_success=false
+    else
+        success_msg "Container $container_name removed successfully."
     fi
-    # Decompose the container
-    decompose_container "$container_name" || warning_msg "Failed to decompose container $container_name"
-    # Ask to remove ALL container data
+
+    # Step 3: Decompose the container
+    info_msg "Step 3: Decomposing container $container_name..."
+    if ! docker compose --file "$base_dir/$container_name/compose.yml" down; then
+        warning_msg "Failed to decompose container $container_name"
+        step_success=false
+    else
+        success_msg "Container $container_name decomposed successfully."
+    fi
+
+    # Step 4: Remove container data
     read -p "Do you want to remove ALL container data from $container_name? (y/n): " remove_container_data
     if [[ "$remove_container_data" =~ ^[Yy]$ ]]; then
         read -p "!! Are you sure you want to remove ALL container data from $container_name? !! (y/n): " remove_container_data_sure
@@ -637,21 +657,28 @@ remove_container() {
             important_msg "Removing ALL container data from $container_name..."
             if ! sudo rm -rf "$base_dir/$container_name"; then
                 error_msg "Failed to remove container data from $container_name"
-                return 1
-            fi
-
-            # Remove the system user
-            info_msg "Removing system user $container_name..."
-            if ! sudo userdel "$container_name"; then
-                warning_msg "Failed to remove system user $container_name"
+                step_success=false
             else
-                success_msg "Successfully removed system user $container_name"
+                success_msg "ALL container data removed from $container_name."
             fi
-
-            success_msg "ALL container data removed from $container_name."
         fi
     fi
-    success_msg "Container $container_name removed successfully."
+
+    # Step 5: Remove the system user
+    info_msg "Step 5: Removing system user $container_name..."
+    if ! sudo userdel "$container_name"; then
+        warning_msg "Failed to remove system user $container_name"
+        step_success=false
+    else
+        success_msg "Successfully removed system user $container_name"
+    fi
+
+    # Final status
+    if [ "$step_success" = true ]; then
+        success_msg "Container $container_name removed successfully with all steps completed."
+    else
+        warning_msg "Container $container_name was partially removed. Some steps failed."
+    fi
 }
 
 # Function to create appdata folders
