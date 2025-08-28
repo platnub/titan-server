@@ -415,6 +415,21 @@ create_container() {
             return 1
         fi
     fi
+
+    # Create a new system user for the container
+    info_msg "Creating system user for container $container_name..."
+    if ! sudo useradd -r -s /usr/sbin/nologin "$container_name"; then
+        error_msg "Failed to create system user $container_name"
+        return 1
+    fi
+
+    # Disable login for the user
+    if ! sudo passwd -l "$container_name"; then
+        warning_msg "Failed to disable login for user $container_name"
+    else
+        success_msg "Successfully disabled login for user $container_name"
+    fi
+
     # Create container directories
     info_msg "Creating container directories..."
     if ! (sudo mkdir -p "$base_dir/$container_name" &&
@@ -424,37 +439,44 @@ create_container() {
         error_msg "Failed to create container directories"
         return 1
     fi
+
     # Create empty compose.yml file first
     info_msg "Creating empty compose.yml file..."
     if ! sudo touch "$base_dir/$container_name/compose.yml"; then
         error_msg "Failed to create empty compose.yml file"
         return 1
     fi
+
     # Edit compose.yml file
     info_msg "Editing compose.yml file..."
     if ! sudo ${EDITOR:-nano} "$base_dir/$container_name/compose.yml"; then
         error_msg "Failed to edit compose.yml file"
         return 1
     fi
+
     # Create .env file
     info_msg "Creating .env file..."
     if ! sudo sh -c "echo \"PUID=1000\nPGID=1000\nTZ=\"Europe/Amsterdam\"\nDOCKERDIR=\"$base_dir\"\nDATADIR=\"$base_dir/$container_name/appdata\"\" > '$base_dir/$container_name/.env'"; then
         error_msg "Failed to create .env file"
         return 1
     fi
+
     if ! sudo ${EDITOR:-nano} "$base_dir/$container_name/.env"; then
         error_msg "Failed to edit .env file"
         return 1
     fi
+
     # Ask to create new folders in appdata
     read -p "Do you want to create any new folders in the appdata directory? (y/n): " create_folders
     if [[ "$create_folders" =~ ^[Yy]$ ]]; then
         create_appdata_folders "$container_name" || warning_msg "Failed to create appdata folders"
     fi
+
     reapply_permissions "$container_name" || {
         error_msg "Failed to reapply permissions for $container_name"
         return 1
     }
+
     success_msg "Container $container_name created successfully."
     # Ask to run the container
     read -p "Do you want to compose the container now? (y/n): " compose_now
@@ -517,6 +539,15 @@ remove_container() {
                 error_msg "Failed to remove container data from $container_name"
                 return 1
             fi
+
+            # Remove the system user
+            info_msg "Removing system user $container_name..."
+            if ! sudo userdel "$container_name"; then
+                warning_msg "Failed to remove system user $container_name"
+            else
+                success_msg "Successfully removed system user $container_name"
+            fi
+
             success_msg "ALL container data removed from $container_name."
         fi
     fi
