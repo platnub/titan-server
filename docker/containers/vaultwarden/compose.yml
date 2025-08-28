@@ -14,8 +14,6 @@ services:
     container_name: vaultwarden
     restart: always
     hostname: vaultwarden
-    networks:
-      vaultwarden:
    ports:
       - '80:80'
     environment:
