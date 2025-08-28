@@ -498,6 +498,12 @@ msg_info "Installing, configuring and restarting SSH"
   virt-customize -q -a "${FILE}" --run-command "sed -i 's/\#Port 22/Port ${SSH_PORT}/' /etc/ssh/sshd_config" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl restart sshd" >/dev/null
 msg_ok "SSH installed"
+msg_info "Installing, configuring and reloading UFW Firewall"
+  virt-customize -q -a "${FILE}" --run-command "apt install ufw -y" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "ufw enable" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "ufw allow ${SSH_PORT}" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "ufw reload" >/dev/null
+msg_ok "UFW installed"
   virt-customize -q -a "${FILE}" --run-command "mkdir -p /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable' > /etc/apt/sources.list.d/docker.list" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "apt-get update -qq && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin" >/dev/null &&
