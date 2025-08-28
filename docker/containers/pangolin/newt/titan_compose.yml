@@ -8,7 +8,7 @@ services:
   newt:
     image: fosrl/newt
     container_name: dev_newt
-    restart: unless-stopped
+    restart: always
     hostname: pangolin
     networks:
       vaultwarden_default:
