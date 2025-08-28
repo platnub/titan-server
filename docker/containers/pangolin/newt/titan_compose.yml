@@ -3,6 +3,11 @@ secrets:
   basic_auth_credentials:
     file: $DOCKERDIR/secrets/newt
 
+########################### SECRETS
+networks:
+  vaultwarden_default:
+    external: true
+
 ########################### SERVICES
 services:
   newt:
@@ -11,8 +16,7 @@ services:
     restart: always
     hostname: pangolin
     networks:
-      vaultwarden_default:
-        external: true
+      - vaultwarden_default
     environment:
       - PANGOLIN_ENDPOINT=https://pangolin.example.com
       - NEWT_ID=$NEWT_ID
