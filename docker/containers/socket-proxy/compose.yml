@@ -1,10 +1,5 @@
 # Source: https://github.com/SimpleHomelab/Deployrr/blob/main/compose/socket-proxy.yml
 
-########################### INCLUDE
-include:
-  # Universal .env file
-  - /opt/containers/.env
-
 ########################### NETWORKS
 networks:
   default:
@@ -22,10 +17,12 @@ services:
   socket-proxy:
     image: lscr.io/linuxserver/socket-proxy:latest
     container_name: socket-proxy
+    env_file:
+      - /opt/containers/.env
+      - ./.env
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
-    profiles: ["core", "all"]
     networks:
       socket_proxy:
         ipv4_address: 192.168.0.254 # You can specify a static IP
