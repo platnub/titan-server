@@ -1,0 +1,18 @@
+########################### NETWORKS
+networks:
+  authentik_default:
+    external: true
+
+########################### SERVICES
+services:
+  newt:
+    image: fosrl/newt
+    container_name: dmz-authentication-newt
+    restart: always
+    hostname: dmz-authentication-newt
+    networks:
+      - authentik_default
+    environment:
+      - PANGOLIN_ENDPOINT=https://pangolin.example.com
+      - NEWT_ID=$NEWT_ID
+      - NEWT_SECRET=$NEWT_SECRET
