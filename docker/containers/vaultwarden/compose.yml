@@ -14,17 +14,17 @@ services:
     environment:
       PUID: $PUID
       GUID: $PGID
-      DOMAIN: 'https://b.example.com'
+      DOMAIN: $DOMAIN
       # Generating ADMIN_TOKEN - https://github.com/dani-garcia/vaultwarden/wiki/Enabling-admin-page
       ADMIN_TOKEN: $ADMIN_TOKEN
       SIGNUPS_ALLOWED: false
       SHOW_PASSWORD_HINT: false
       # Email settings - https://github.com/dani-garcia/vaultwarden/wiki/SMTP-Configuration
-      SMTP_HOST: 'mail.example.com'
-      SMTP_FROM: 'admin@example.com'
-      SMTP_PORT: '465'
-      SMTP_SECURITY: 'force_tls'
-      SMTP_USERNAME: 'admin@example.com'
+      SMTP_HOST: $SMTP_HOST
+      SMTP_FROM: $SMTP_FROM
+      SMTP_PORT: $SMTP_PORT
+      SMTP_SECURITY: $SMTP_SECURITY
+      SMTP_USERNAME: $SMTP_USERNAME
       SMTP_PASSWORD: $SMTP_PASSWORD
       # Mobile Push Notifications (Auto syncing vault) - https://github.com/dani-garcia/vaultwarden/wiki/Enabling-Mobile-Client-push-notification
       PUSH_ENABLED: true
