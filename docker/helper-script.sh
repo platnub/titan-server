@@ -513,7 +513,7 @@ create_container() {
 
     # Create a new system user for the container
     info_msg "Creating system user for container $container_name..."
-    if ! sudo useradd -s "$container_name"; then
+    if ! sudo useradd -r "$container_name"; then
         error_msg "Failed to create system user $container_name"
         return 1
     fi
@@ -721,7 +721,7 @@ create_appdata_folders() {
 # Main menu
 while true; do
     header "Docker Container Management Menu"
-    echo -e "${GREEN}1. List all containerss${RESET}"
+    echo -e "${GREEN}1. List all containers${RESET}"
     echo -e "${GREEN}2. Start a container${RESET}"
     echo -e "${GREEN}3. Stop a container${RESET}"
     echo -e "${GREEN}4. Create a new container${RESET}"
