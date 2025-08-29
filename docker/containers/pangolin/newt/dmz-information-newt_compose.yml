@@ -7,9 +7,9 @@ networks:
 services:
   newt:
     image: fosrl/newt
-    container_name: dev_newt
+    container_name: dmz-information-newt
     restart: always
-    hostname: pangolin
+    hostname: dmz-information-newt
     networks:
       - vaultwarden_default
     environment:
