@@ -55,8 +55,8 @@ services:
       AUTHENTIK_REDIS__HOST: redis
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?secret key required}
     volumes:
-    - ./media:/media
-    - ./custom-templates:/templates
+    - $CONTAINERDIR/appdata/media:/media
+    - $CONTAINERDIR/appdata/custom-templates:/templates
     depends_on:
       postgresql:
         condition: service_healthy
@@ -78,9 +78,9 @@ services:
     user: root
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
-    - ./media:/media
-    - ./certs:/certs
-    - ./custom-templates:/templates
+    - $CONTAINERDIR/appdata/media:/media
+    - $CONTAINERDIR/appdata/certs:/certs
+    - $CONTAINERDIR/appdata/custom-templates:/templates
     depends_on:
       postgresql:
         condition: service_healthy
