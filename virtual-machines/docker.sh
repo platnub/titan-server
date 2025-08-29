@@ -513,18 +513,17 @@ msg_info "Installing, configuring and restarting SSH"
   virt-customize -q -a "${FILE}" --run-command "sed -i 's/\#Port 22/Port ${SSH_PORT}/' /etc/ssh/sshd_config" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "systemctl restart sshd" >/dev/null
 msg_ok "SSH installed"
-#msg_info "Installing, configuring and reloading UFW Firewall"
-#  virt-customize -q -a "${FILE}" --run-command "apt install ufw -y" >/dev/null &&
-#  virt-customize -q -a "${FILE}" --run-command "ufw --force enable" >/dev/null &&
-#  virt-customize -q -a "${FILE}" --run-command "ufw allow ${SSH_PORT}" >/dev/null &&
-#  virt-customize -q -a "${FILE}" --run-command "ufw reload" >/dev/null
-#msg_ok "UFW installed"
+msg_info "Installing, configuring and reloading UFW Firewall"
+  virt-customize -q -a "${FILE}" --run-command "apt install ufw -y" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "ufw --force enable" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "ufw allow ${SSH_PORT}" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "ufw reload" >/dev/null
+msg_ok "UFW installed"
   if [ "$FILE_CACHING" == "yes" ]; then
     msg_info "Improving file caching"
     virt-customize -q -a " echo -e 'vm.swappiness=10\nvm.vfs_cache_pressure = 50\nfs.inotify.max_user_watches=262144' >> /etc/sysctl.conf"
     msg_ok "Improved file caching"
   fi
-    success_msg "Machi
 msg_info "Expanding root partition to use full disk space"
 qemu-img create -f qcow2 expanded.qcow2 ${DISK_SIZE} >/dev/null 2>&1
 virt-resize --expand /dev/sda1 ${FILE} expanded.qcow2 >/dev/null 2>&1
