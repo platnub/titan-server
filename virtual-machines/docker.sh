@@ -515,7 +515,7 @@ msg_info "Installing, configuring and restarting SSH"
 msg_ok "SSH installed"
 msg_info "Installing, configuring and reloading UFW Firewall"
   virt-customize -q -a "${FILE}" --run-command "apt install ufw -y" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "ufw enable" >/dev/null &&
+  virt-customize -q -a "${FILE}" --run-command "ufw --force enable" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "ufw allow ${SSH_PORT}" >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "ufw reload" >/dev/null
 msg_ok "UFW installed"
