@@ -513,7 +513,7 @@ create_container() {
 
     # Create a new system user for the container
     info_msg "Creating system user for container $container_name..."
-    if ! sudo useradd -s /usr/sbin/nologin "$container_name"; then
+    if ! sudo useradd -s "$container_name"; then
         error_msg "Failed to create system user $container_name"
         return 1
     fi
@@ -529,6 +529,7 @@ create_container() {
     info_msg "Creating container directories..."
     if ! (sudo mkdir -p "$base_dir/$container_name" &&
           sudo mkdir -p "$base_dir/$container_name/appdata" &&
+          sudo mkdir -p "$base_dir/$container_name/secrets" &&
           sudo mkdir -p "$base_dir/$container_name/logs"); then
         error_msg "Failed to create container directories"
         return 1
