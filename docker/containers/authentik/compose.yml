@@ -5,12 +5,16 @@ networks:
 ########################### SERVICES
 services:
   postgresql:
+    image: docker.io/library/postgres:16-alpine
+    restart: always
     env_file:
     - .env
     environment:
       POSTGRES_DB: ${PG_DB:-authentik}
       POSTGRES_PASSWORD: ${PG_PASS:?database password required}
       POSTGRES_USER: ${PG_USER:-authentik}
+    volumes:
+    - database:/var/lib/postgresql/data
     healthcheck:
       interval: 30s
       retries: 5
@@ -19,12 +23,12 @@ services:
       - CMD-SHELL
       - pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}
       timeout: 5s
-    image: docker.io/library/postgres:16-alpine
-    restart: unless-stopped
-    volumes:
-    - database:/var/lib/postgresql/data
   redis:
+    image: docker.io/library/redis:alpine
+    restart: always
     command: --save 60 1 --loglevel warning
+    volumes:
+    - redis:/data
     healthcheck:
       interval: 30s
       retries: 5
@@ -33,18 +37,9 @@ services:
       - CMD-SHELL
       - redis-cli ping | grep PONG
       timeout: 3s
-    image: docker.io/library/redis:alpine
-    restart: unless-stopped
-    volumes:
-    - redis:/data
   server:
     command: server
-    depends_on:
-      postgresql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
+    restart: always
     image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2025.8.1}
     hostname: authentik
     ports:
@@ -62,13 +57,15 @@ services:
     volumes:
     - ./media:/media
     - ./custom-templates:/templates
-  worker:
-    command: worker
     depends_on:
       postgresql:
         condition: service_healthy
       redis:
         condition: service_healthy
+  worker:
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2025.8.1}
+    restart: unless-stopped
+    command: worker
     env_file:
     - .env
     environment:
@@ -78,14 +75,17 @@ services:
       AUTHENTIK_POSTGRESQL__USER: ${PG_USER:-authentik}
       AUTHENTIK_REDIS__HOST: redis
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?secret key required}
-    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2025.8.1}
-    restart: unless-stopped
     user: root
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
     - ./media:/media
     - ./certs:/certs
     - ./custom-templates:/templates
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 volumes:
   database:
     driver: local
