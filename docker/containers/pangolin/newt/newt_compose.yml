@@ -9,7 +9,6 @@ services:
     image: fosrl/newt
     container_name: newt-$HOSTNAME
     restart: always
-    hostname: newt-$HOSTNAME
     networks:
       - authentik_default
     environment:
