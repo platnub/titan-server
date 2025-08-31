@@ -66,6 +66,7 @@ services:
       - default
       - socket_proxy
     env_file: ./.env
+    environment:
       PUID: $PUID
       GUID: $PGID
     volumes:
