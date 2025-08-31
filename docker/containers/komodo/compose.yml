@@ -11,7 +11,7 @@
 networks:
   socket-proxy_default:
     external: true
-    
+
 ########################### SERVICES
 services:
   mongo:
