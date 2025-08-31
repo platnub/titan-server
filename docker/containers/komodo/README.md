@@ -7,7 +7,6 @@
 # appdata folders to create
 1. mongo-data
 2. mongo-config
-3. backups
 
 # Installation steps
 1. Create user with home folder for komodo periphery
