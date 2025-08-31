@@ -9,7 +9,7 @@
 
 ########################### NETWORKS
 networks:
-  socket-proxy:
+  socket_proxy:
     external: true
 
 ########################### SERVICES
