@@ -1,5 +1,6 @@
 # Requirements
-1. Socket proxy
+1. Proxmox processor type = host
+2. Socket proxy
 
 # .env variables to configure
 1. KOMODO_PASSKEY
