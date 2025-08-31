@@ -83,8 +83,6 @@ services:
       ## or docker will get confused. See https://github.com/moghtech/komodo/discussions/180.
       ## Default: /etc/komodo.
       - ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}:${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
-    ## If you want to use a custom periphery config file, use command to pass it to periphery.
-    command: periphery --config-path ${PERIPHERY_ROOT_DIRECTORY/.config/komodo:-/etc/komodo}/periphery.config.toml
 
 volumes:
   # Mongo
