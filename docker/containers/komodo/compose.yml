@@ -11,6 +11,7 @@
 networks:
   socket_proxy:
     external: true
+  komodo:
 
 ########################### SERVICES
 services:
@@ -20,6 +21,8 @@ services:
       komodo.skip: # Prevent Komodo from stopping with StopAllContainers
     command: --quiet --wiredTigerCacheSizeGB 0.25
     restart: always
+    networks:
+      - komodo
     # ports:
     #   - 27017:27017
     volumes:
@@ -38,6 +41,8 @@ services:
     restart: always
     depends_on:
       - mongo
+    networks:
+      - komodo
     ports:
       - 9120:9120
     env_file: ./.env
@@ -69,6 +74,7 @@ services:
     restart: always
     networks:
       - socket_proxy
+      - komodo
     env_file: ./.env
     environment:
       PUID: $PUID
