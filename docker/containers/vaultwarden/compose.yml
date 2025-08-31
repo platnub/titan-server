@@ -1,6 +1,6 @@
 ########################### NETWORKS
 networks:
-  vaultwarden_default:
+  vaultwarden:
 
 ########################### SERVICES
 services:
@@ -8,8 +8,6 @@ services:
     image: vaultwarden/server:latest
     container_name: vaultwarden
     restart: always
-    networks:
-      - vaultwarden_default
     ports:
       - '80:80'
     environment:
