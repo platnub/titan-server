@@ -7,6 +7,11 @@
 ##   2. Komodo Core
 ##   3. Komodo Periphery
 
+########################### NETWORKS
+networks:
+  socket-proxy_default:
+    external: true
+    
 ########################### SERVICES
 services:
   mongo:
