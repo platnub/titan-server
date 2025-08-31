@@ -9,6 +9,7 @@
 
 # Installation steps
 1. Create user **with** home folder for komodo periphery
+2. Create docker container folders and compose container
 
 # Installation steps script
 ```
