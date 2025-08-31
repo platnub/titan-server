@@ -1,8 +1,8 @@
 ########################### NETWORKS
 networks:
-  authentik:
+  authentik_default:
     external: true
-  vaultwarden:
+  vaultwarden_default:
     external: true
 
 ########################### SERVICES
@@ -12,8 +12,8 @@ services:
     container_name: newt-<name>
     restart: always
     networks:
-      - authentik
-      - vaultwarden
+      - authentik_default
+      - vaultwarden_default
     environment:
       PANGOLIN_ENDPOINT: $PANGOLIN_ENDPOINT
       NEWT_ID: $NEWT_ID
