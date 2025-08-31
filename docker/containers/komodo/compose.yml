@@ -7,19 +7,22 @@
 ##   2. Komodo Core
 ##   3. Komodo Periphery
 
+########################### SERVICES
 services:
   mongo:
     image: mongo
     labels:
       komodo.skip: # Prevent Komodo from stopping with StopAllContainers
     command: --quiet --wiredTigerCacheSizeGB 0.25
-    restart: unless-stopped
+    restart: always
     # ports:
     #   - 27017:27017
     volumes:
-      - mongo-data:/data/db
-      - mongo-config:/data/configdb
+      - $CONTAINERDIR/appdata/mongo-data:/data/db
+      - $CONTAINERDIR/appdata/mongo-config:/data/configdb
     environment:
+      PUID: $PUID
+      GUID: $PGID
       MONGO_INITDB_ROOT_USERNAME: ${KOMODO_DB_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${KOMODO_DB_PASSWORD}
   
@@ -27,13 +30,15 @@ services:
     image: ghcr.io/moghtech/komodo-core:${COMPOSE_KOMODO_IMAGE_TAG:-latest}
     labels:
       komodo.skip: # Prevent Komodo from stopping with StopAllContainers
-    restart: unless-stopped
+    restart: always
     depends_on:
       - mongo
     ports:
       - 9120:9120
-    env_file: ./compose.env
+    env_file: ./.env
     environment:
+      PUID: $PUID
+      GUID: $PGID
       KOMODO_DATABASE_ADDRESS: mongo:27017
       KOMODO_DATABASE_USERNAME: ${KOMODO_DB_USERNAME}
       KOMODO_DATABASE_PASSWORD: ${KOMODO_DB_PASSWORD}
@@ -56,8 +61,13 @@ services:
     image: ghcr.io/moghtech/komodo-periphery:${COMPOSE_KOMODO_IMAGE_TAG:-latest}
     labels:
       komodo.skip: # Prevent Komodo from stopping with StopAllContainers
-    restart: unless-stopped
-    env_file: ./compose.env
+    restart: always
+    networks:
+      - default
+      - socket_proxy
+    env_file: ./.env
+      PUID: $PUID
+      GUID: $PGID
     volumes:
       ## Mount external docker socket
       - /var/run/docker.sock:/var/run/docker.sock
@@ -68,6 +78,8 @@ services:
       ## or docker will get confused. See https://github.com/moghtech/komodo/discussions/180.
       ## Default: /etc/komodo.
       - ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}:${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
+    ## If you want to use a custom periphery config file, use command to pass it to periphery.
+    command: periphery --config-path ${PERIPHERY_ROOT_DIRECTORY/.config/komodo:-/etc/komodo}/periphery.config.toml
 
 volumes:
   # Mongo
