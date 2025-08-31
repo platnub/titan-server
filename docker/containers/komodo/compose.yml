@@ -9,7 +9,7 @@
 
 ########################### NETWORKS
 networks:
-  socket-proxy_default:
+  socket-proxy:
     external: true
 
 ########################### SERVICES
@@ -68,7 +68,6 @@ services:
       komodo.skip: # Prevent Komodo from stopping with StopAllContainers
     restart: always
     networks:
-      - default
       - socket_proxy
     env_file: ./.env
     environment:
