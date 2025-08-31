@@ -7,13 +7,8 @@
 3. KOMODO_WEBHOOK_SECRET
 4. KOMODO_JWT_SECRET
 
-# appdata folders to create
-1. mongo-data
-2. mongo-config
-
 # Installation steps
-1. Create user with home folder for komodo periphery
-2. Create backup directory
+1. Create user **with** home folder for komodo periphery
 
 # Installation steps script
 ```
