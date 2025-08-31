@@ -1,15 +1,15 @@
 ########################### NETWORKS
 networks:
-  authentik_default:
-    external: true
+  authentik:
+  vaultwarden:
 
 ########################### SERVICES
 services:
   newt:
     image: fosrl/newt
-    container_name: dmz-authentication-newt
+    container_name: newt-$HOSTNAME
     restart: always
-    hostname: dmz-authentication-newt
+    hostname: newt-$HOSTNAME
     networks:
       - authentik_default
     environment:
