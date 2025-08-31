@@ -1,7 +1,9 @@
 ########################### NETWORKS
 networks:
   authentik:
+    external: true
   vaultwarden:
+    external: true
 
 ########################### SERVICES
 services:
@@ -9,6 +11,9 @@ services:
     image: fosrl/newt
     container_name: newt-<name>
     restart: always
+    networks:
+      - authentik
+      - vaultwarden
     environment:
       PANGOLIN_ENDPOINT: $PANGOLIN_ENDPOINT
       NEWT_ID: $NEWT_ID
