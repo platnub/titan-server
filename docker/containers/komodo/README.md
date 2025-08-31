@@ -3,7 +3,9 @@
 
 # .env variables to configure
 1. KOMODO_PASSKEY
-2. /home instead of /etc.....!!!
+2. KOMODO_HOST
+3. KOMODO_WEBHOOK_SECRET
+4. KOMODO_JWT_SECRET
 
 # appdata folders to create
 1. mongo-data
