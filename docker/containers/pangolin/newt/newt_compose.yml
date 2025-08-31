@@ -7,7 +7,7 @@ networks:
 services:
   newt:
     image: fosrl/newt
-    container_name: newt-dmz-information
+    container_name: newt-<name>
     restart: always
     network:
       - authentik
