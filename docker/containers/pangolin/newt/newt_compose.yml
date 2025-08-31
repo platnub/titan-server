@@ -9,9 +9,6 @@ services:
     image: fosrl/newt
     container_name: newt-<name>
     restart: always
-    network:
-      - authentik
-      - vaultwarden
     environment:
       PANGOLIN_ENDPOINT: $PANGOLIN_ENDPOINT
       NEWT_ID: $NEWT_ID
