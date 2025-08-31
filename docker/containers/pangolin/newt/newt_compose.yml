@@ -7,11 +7,9 @@ networks:
 services:
   newt:
     image: fosrl/newt
-    container_name: newt-$HOSTNAME
+    container_name: newt-dmz-information
     restart: always
-    networks:
-      - authentik_default
     environment:
-      - PANGOLIN_ENDPOINT: $PANGOLIN_ENDPOINT
-      - NEWT_ID: $NEWT_ID
-      - NEWT_SECRET: $NEWT_SECRET
+      PANGOLIN_ENDPOINT: $PANGOLIN_ENDPOINT
+      NEWT_ID: $NEWT_ID
+      NEWT_SECRET: $NEWT_SECRET
