@@ -3,7 +3,7 @@
 2. Socket proxy
 
 # .env variables to configure
-Use `openssl rand -hex 32` for PASSKEY and JWT
+Use `openssl rand -hex 64` for PASSKEY and JWT
 1. KOMODO_PASSKEY
 2. KOMODO_HOST
 3. KOMODO_JWT_SECRET
