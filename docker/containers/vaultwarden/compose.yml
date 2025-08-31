@@ -8,7 +8,6 @@ services:
     image: vaultwarden/server:latest
     container_name: vaultwarden
     restart: always
-    hostname: vaultwarden
     ports:
       - '80:80'
     environment:
