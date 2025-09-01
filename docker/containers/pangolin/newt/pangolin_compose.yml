@@ -1,12 +1,19 @@
+########################### NETWORKS
+networks:
+  socket_proxy:
+    external: true
+  default:
+    driver: bridge
+    name: pangolin
+
+########################### SERVICES
 name: pangolin
 services:
   pangolin:
     image: docker.io/fosrl/pangolin:1.9.3
     container_name: pangolin
     restart: always
-    environment:
-      PUID: $PUID
-      PGID: $PGID
+    user: 1000:1000
     volumes:
       - ./config:/app/config
       - pangolin-data:/var/certificates
@@ -21,6 +28,7 @@ services:
     image: docker.io/fosrl/gerbil:1.2.1
     container_name: gerbil
     restart: always
+    user: 1000:1000
     depends_on:
       pangolin:
         condition: service_healthy
@@ -32,9 +40,6 @@ services:
       - 21820:21820/udp
       - 443:443
       - 80:80
-    environment:
-      PUID: $PUID
-      PGID: $PGID
     command:
       - --reachableAt=http://gerbil:3003
       - --generateAndSaveKeyTo=/var/config/key
@@ -46,17 +51,15 @@ services:
     image: docker.io/traefik:v3.5
     container_name: traefik
     restart: always
-
+    user: 1000:1000
+    networks:
+      - socket_proxy
     network_mode: service:gerbil # Ports appear on the gerbil service
-
     depends_on:
       pangolin:
         condition: service_healthy
     command:
       - --configFile=/etc/traefik/traefik_config.yml
-    environment:
-      PUID: $PUID
-      PGID: $PGID
     volumes:
       - ./config/traefik:/etc/traefik:ro # Volume to store the Traefik configuration
       - ./config/letsencrypt:/letsencrypt # Volume to store the Let's Encrypt certificates
@@ -64,11 +67,6 @@ services:
       # Shared volume for certificates and dynamic config in file mode 
       - pangolin-data:/var/certificates:ro
       - pangolin-data:/var/dynamic:ro
-
-networks:
-  default:
-    driver: bridge
-    name: pangolin
 
 
 volumes:
