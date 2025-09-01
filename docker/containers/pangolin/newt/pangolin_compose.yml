@@ -4,6 +4,9 @@ services:
     image: docker.io/fosrl/pangolin:1.9.3
     container_name: pangolin
     restart: always
+    environment:
+      PUID: $PUID
+      GUID: $PGID
     volumes:
       - ./config:/app/config
       - pangolin-data:/var/certificates
@@ -21,12 +24,6 @@ services:
     depends_on:
       pangolin:
         condition: service_healthy
-    command:
-      - --reachableAt=http://gerbil:3003
-      - --generateAndSaveKeyTo=/var/config/key
-      - --remoteConfig=http://pangolin:3001/api/v1/
-    volumes:
-      - ./config/:/var/config
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
@@ -35,6 +32,15 @@ services:
       - 21820:21820/udp
       - 443:443
       - 80:80
+    environment:
+      PUID: $PUID
+      GUID: $PGID
+    command:
+      - --reachableAt=http://gerbil:3003
+      - --generateAndSaveKeyTo=/var/config/key
+      - --remoteConfig=http://pangolin:3001/api/v1/
+    volumes:
+      - ./config/:/var/config
 
   traefik:
     image: docker.io/traefik:v3.5
@@ -48,6 +54,9 @@ services:
         condition: service_healthy
     command:
       - --configFile=/etc/traefik/traefik_config.yml
+    environment:
+      PUID: $PUID
+      GUID: $PGID
     volumes:
       - ./config/traefik:/etc/traefik:ro # Volume to store the Traefik configuration
       - ./config/letsencrypt:/letsencrypt # Volume to store the Let's Encrypt certificates
