@@ -53,8 +53,9 @@ services:
     restart: always
     user: 1000:1000
     networks:
-      - socket_proxy
-    network_mode: service:gerbil # Ports appear on the gerbil service
+      socket_proxy:
+      default:
+        network_mode: service:gerbil # Ports appear on the gerbil service
     depends_on:
       pangolin:
         condition: service_healthy
