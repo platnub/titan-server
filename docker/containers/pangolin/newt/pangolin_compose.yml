@@ -1,7 +1,7 @@
 ########################### NETWORKS
 networks:
-  socket_proxy:
-    external: true
+#  socket_proxy:
+#    external: true
   default:
     driver: bridge
     name: pangolin
@@ -35,9 +35,9 @@ services:
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
-    networks:
-      - socket_proxy
-      - default
+#    networks:
+#      - socket_proxy
+#      - default
     ports:
       - 51820:51820/udp
       - 21820:21820/udp
