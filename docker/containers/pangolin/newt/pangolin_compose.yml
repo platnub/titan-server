@@ -6,7 +6,7 @@ services:
     restart: always
     environment:
       PUID: $PUID
-      GUID: $PGID
+      PGID: $PGID
     volumes:
       - ./config:/app/config
       - pangolin-data:/var/certificates
@@ -34,7 +34,7 @@ services:
       - 80:80
     environment:
       PUID: $PUID
-      GUID: $PGID
+      PGID: $PGID
     command:
       - --reachableAt=http://gerbil:3003
       - --generateAndSaveKeyTo=/var/config/key
@@ -56,7 +56,7 @@ services:
       - --configFile=/etc/traefik/traefik_config.yml
     environment:
       PUID: $PUID
-      GUID: $PGID
+      PGID: $PGID
     volumes:
       - ./config/traefik:/etc/traefik:ro # Volume to store the Traefik configuration
       - ./config/letsencrypt:/letsencrypt # Volume to store the Let's Encrypt certificates
