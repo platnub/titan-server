@@ -13,7 +13,7 @@ services:
     image: docker.io/fosrl/pangolin:1.9.3
     container_name: pangolin
     restart: always
-    user: 1000:1000
+#    user: 1000:1000 # Runs as root. Can't find a way to avoid this. Wireguard interface creation and certificate errors
     volumes:
       - ./config:/app/config
       - pangolin-data:/var/certificates
@@ -28,7 +28,7 @@ services:
     image: docker.io/fosrl/gerbil:1.2.1
     container_name: gerbil
     restart: always
-#    user: 1000:1000 # Runs as root. Can't find a way to avoid this. Wireguard interface creation error
+#    user: 1000:1000 # Runs as root. Can't find a way to avoid this. Wireguard interface creation and certificate errors
     depends_on:
       pangolin:
         condition: service_healthy
@@ -54,7 +54,7 @@ services:
     image: docker.io/traefik:v3.5
     container_name: traefik
     restart: always
-    user: 1000:1000
+#    user: 1000:1000 # Runs as root. Can't find a way to avoid this. Wireguard interface creation and certificate errors
     network_mode: service:gerbil # Ports appear on the gerbil service
     depends_on:
       pangolin:
