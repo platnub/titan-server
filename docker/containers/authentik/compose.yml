@@ -1,6 +1,9 @@
-########################### NETWORKS
-networks:
-  authentik:
+########################### VOLUMES
+volumes:
+  database:
+    driver: local
+  redis:
+    driver: local
 
 ########################### SERVICES
 services:
@@ -89,8 +92,3 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-volumes:
-  database:
-    driver: local
-  redis:
-    driver: local
