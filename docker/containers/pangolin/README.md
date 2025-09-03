@@ -29,7 +29,7 @@ Configure wildcard certificates using instructions from [Pangolin]()
        print;
        print "        provider: \"cloudflare\"";
        next
-   } 1' config.yml > tmp && mv tmp traefik_config.yml
+   } 1' traefik_config.yml > tmp && mv tmp traefik_config.yml
    ```
 ℹ️ Continue using instructions from [ - HHF Technology Forum](https://forum.hhf.technology/t/crowdsec-manager-for-pangolin-user-guide/579)
 7. 
