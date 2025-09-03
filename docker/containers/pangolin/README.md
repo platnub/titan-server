@@ -18,5 +18,4 @@ _Start install using instructions from: https://docs.digpangolin.com/self-host/q
    mkdir appdata
    mv config appdata
    ```
-4. Create `pangolin-core` stack in Komodo
-5. 
+4. Create `pangolin-core` stack in Komodo using [compose.yml](https://github.com/platnub/titan-server/blob/main/docker/containers/pangolin/compose.yml)
