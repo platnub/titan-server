@@ -25,12 +25,8 @@
 Configure wildcard certificates using instructions from [Pangolin]()
 6. ```
    awk '/^        cert_resolver: "letsencrypt"$/ {print; print "        prefer_wildcard_cert: true"; next} 1' config.yml > tmp && mv tmp config.yml
-   awk '/^    acme:$/ {
-       print;
-       print "      dnsChallenge:";
-       print "        provider: \"cloudflare\"";
-       next
-   } 1' traefik_config.yml > tmp && mv tmp traefik_config.yml
+   sed -i 's/^      httpChallenge:$/      dnsChallenge:/' config.yml
+   sed -i 's/^        entryPoint: web$/        provider: \"cloudflare\"/' config.yml
    ```
 ℹ️ Continue using instructions from [ - HHF Technology Forum](https://forum.hhf.technology/t/crowdsec-manager-for-pangolin-user-guide/579)
 7. 
