@@ -286,4 +286,5 @@
     systemctl restart crowdsec-firewall-bouncer.service
     sed -i '/^  ipv6:/,/^    enabled:/ s/^    enabled: true/    enabled: false/' /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
     ```
-11. Destroy and deploy the stack in Komodo
+19. Destroy and deploy the stack in Komodo
+20. Read the Setup Token from the Pangolin container log
