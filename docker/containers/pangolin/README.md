@@ -7,7 +7,7 @@
 
 ‼️ Replace <ssh_port>
 
-‼️ It will prompt you to set the "komodo" password when finished
+‼️ It will prompt you to set the "pangolin-service" (sudo) password when finished
 
 1. ```
    # Install everything
@@ -26,7 +26,10 @@
 
    # Change SSH port, disable IPv6, Setup UFW firewall
    sed -i 's/\#Port 22/Port <ssh_port> /' /etc/ssh/sshd_config
-   sed -i 's|ExecStart=/opt/digitalocean/bin/droplet-agent |ExecStart=/opt/digitalocean/bin/droplet-agent -sshd_port=<ssh_port>|g' /etc/init/droplet-agent.conf
+
+   # Optional DigitalOcean VPS host SSH port step
+   # sed -i 's|ExecStart=/opt/digitalocean/bin/droplet-agent |ExecStart=/opt/digitalocean/bin/droplet-agent -sshd_port=<ssh_port>|g' /etc/init/droplet-agent.conf
+   
    systemctl daemon-reload
    systemctl restart sshd
    echo -e "\n# Disabling the IPv6\nnet.ipv6.conf.all.disable_ipv6 = 1\nnet.ipv6.conf.default.disable_ipv6 = 1\nnet.ipv6.conf.lo.disable_ipv6 = 1" | sudo tee -a /etc/sysctl.conf > /dev/null
@@ -57,16 +60,16 @@
    mkdir /opt/docker
    chown komodo:komodo /opt/docker
    chmod 700 /opt/docker
-   passwd komodo
+   passwd pangolin-service
    ```
 
-   ‼️ Set user "komodo" password
+‼️ Set user "komodo" password
 
    ```
    passwd pangolin
    ```
 
-   ‼️ Set user "pangolin" password
+‼️ Set user "pangolin" password
 
    ```
    passwd pangolin
