@@ -17,6 +17,7 @@ services:
     restart: always
     networks:
       authentik:
+    user: ${PUID}:${PGID}
     env_file:
     - .env
     environment:
@@ -38,6 +39,7 @@ services:
     restart: always
     networks:
       authentik:
+    user: ${PUID}:${PGID}
     command: --save 60 1 --loglevel warning
     volumes:
     - redis:/data
@@ -53,6 +55,7 @@ services:
     command: server
     restart: always
     image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2025.8.1}
+    user: ${PUID}:${PGID}
     hostname: authentik
     networks:
       authentik:
@@ -80,6 +83,7 @@ services:
   worker:
     image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2025.8.1}
     restart: always
+    user: ${PUID}:${PGID}
     networks:
       authentik:
     command: worker
