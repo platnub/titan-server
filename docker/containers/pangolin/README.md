@@ -24,9 +24,12 @@
 5. Destroy the stack
 Configure wildcard certificates using instructions from [Pangolin]()
 6. ```
+   cd /opt/docker/pangolin-core/appdata/config
    awk '/^        cert_resolver: "letsencrypt"$/ {print; print "        prefer_wildcard_cert: true"; next} 1' config.yml > tmp && mv tmp config.yml
+   cd traefik
    sed -i 's/^      httpChallenge:$/      dnsChallenge:/' traefik_config.yml
    sed -i 's/^        entryPoint: web$/        provider: "cloudflare"/' traefik_config.yml
+   awk '/^        cert_resolver: "letsencrypt"$/ {print; print "        prefer_wildcard_cert: true"; next} 1' dynamic_config.yml > tmp && mv tmp dynamic_config.yml
    ```
 ℹ️ Continue using instructions from [ - HHF Technology Forum](https://forum.hhf.technology/t/crowdsec-manager-for-pangolin-user-guide/579)
 7. 
