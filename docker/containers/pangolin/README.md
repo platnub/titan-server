@@ -23,6 +23,7 @@
 ‼️ It will prompt you to set the "pangolin-service" (sudo) password when finished
 
 1. ```
+   sudo su
    # Install SSH and UFW
    apt-get update -y && apt-get upgrade -y
    apt-get install ssh -y
@@ -123,6 +124,8 @@
    ```
 
 ℹ️ Start the Pangolin install using instructions from [Pangolin](https://docs.digpangolin.com/self-host/quick-install)
+
+‼️ Log back into sudo (pangolin-service) account and `sudo su`
 
 ‼️ Follow installer instructions
  - [Optional] Email setup
