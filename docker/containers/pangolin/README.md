@@ -90,9 +90,9 @@
 
 ‼️ Login as user "komodo"
 
-‼️ Replace <allowed_ips> with Komodo host public IP, or exclude that line
+‼️ Replace `<allowed_ips>` with Komodo host public IP, or exclude that line
 
-‼️ Replace <passkey> with Komodo host passkey
+‼️ Replace `<passkey>` with Komodo host passkey
 
    ```
    # Download and create config file
