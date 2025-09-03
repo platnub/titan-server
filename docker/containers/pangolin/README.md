@@ -1,6 +1,7 @@
 [03-09-2025]
 ## Requirements
  - VM setup using Proxmox script
+ - Domain managed through Cloudflare
  - Pangolin VPS setup using script
 
 ℹ️ Start Pangolin install using instructions from [Pangolin](https://docs.digpangolin.com/self-host/quick-install)
