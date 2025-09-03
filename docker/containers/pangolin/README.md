@@ -1,7 +1,7 @@
 [03-09-2025]
 ## Requirements
-- VM setup using Proxmox script
-- Pangolin VPS setup using script
+ - VM setup using Proxmox script
+ - Pangolin VPS setup using script
 
 ℹ️ Start install using instructions from [Pangolin](https://docs.digpangolin.com/self-host/quick-install)
 1. ```
@@ -10,8 +10,8 @@
    sudo ./installer
    ```
 ‼️ Follow installer instructions
-  - [Optional] Email setup
-  - [Highly Recommended] CrowdSec installation
+ - [Optional] Email setup
+ - [Highly Recommended] CrowdSec installation
 2. ```
    docker compose down
    rm -rf installer && rm -rf config.tar.gz
@@ -19,7 +19,7 @@
    mv config appdata
    chown -R komodo:komodo /opt/docker/pangolin-core
    ```
-3. Create `pangolin-core` stack in Komodo using [compose.yml](https://github.com/platnub/titan-server/blob/main/docker/containers/pangolin/compose.yml)
+3. Create pangolin-core stack in Komodo using [compose.yml](https://github.com/platnub/titan-server/blob/main/docker/containers/pangolin/compose.yml)
 5. Deploy the stack and check if it starts without issues
 6. Destroy the stack
 Configure wildcard certificates using instructions from [Pangolin]()
