@@ -4,6 +4,7 @@
  - Pangolin VPS setup using script
 
 ℹ️ Start Pangolin install using instructions from [Pangolin](https://docs.digpangolin.com/self-host/quick-install)
+
 1. ```
    mkdir /opt/docker/pangolin-core && cd/opt/docker/pangolin-core
    curl -fsSL https://digpangolin.com/get-installer.sh | bash
@@ -37,4 +38,5 @@
    awk '/^        cert_resolver: "letsencrypt"$/ {print; print "        prefer_wildcard_cert: true"; next} 1' dynamic_config.yml > tmp && mv tmp dynamic_config.yml
    ```
 ℹ️ Continue using instructions from [ - HHF Technology Forum](https://forum.hhf.technology/t/crowdsec-manager-for-pangolin-user-guide/579)
+
 7. 
