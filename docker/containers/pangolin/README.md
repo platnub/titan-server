@@ -28,7 +28,7 @@
 
 ℹ️ Configure wildcard certificates using instructions from [Pangolin]()
 
-9. ```
+6. ```
    cd /opt/docker/pangolin-core/appdata/config
    awk '/^        cert_resolver: "letsencrypt"$/ {print; print "        prefer_wildcard_cert: true"; next} 1' config.yml > tmp && mv tmp config.yml
    cd traefik
