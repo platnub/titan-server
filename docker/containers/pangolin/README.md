@@ -10,3 +10,4 @@
   4. ```
      docker compose down
      ```
+2. Test
