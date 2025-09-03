@@ -35,7 +35,6 @@
    passwd -l root
    useradd -r pangolin
    useradd --create-home komodo
-   usermod -aG docker komodo
 
    # Change SSH port, disable IPv6, Setup UFW firewall
    sed -i 's/\#Port 22/Port <ssh_port> /' /etc/ssh/sshd_config
@@ -73,6 +72,7 @@
    mkdir /opt/docker
    chown komodo:komodo /opt/docker
    chmod 700 /opt/docker
+   usermod -aG docker komodo
    passwd pangolin-service
    ```
 
