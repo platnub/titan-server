@@ -132,7 +132,7 @@
  - [Highly Recommended] CrowdSec installation
 
 2. ```
-   mkdir /opt/docker/pangolin-core && cd/opt/docker/pangolin-core
+   mkdir /opt/docker/pangolin-core && cd /opt/docker/pangolin-core
    curl -fsSL https://digpangolin.com/get-installer.sh | bash
    sudo ./installer
    ```
