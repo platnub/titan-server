@@ -196,7 +196,6 @@
    ```
 
 8. Deploy the stack and check if it starts without issues
-9. Destroy the stack
 
 ℹ️ Continue using instructions from [HHF Technology Forum](https://forum.hhf.technology/t/crowdsec-manager-for-pangolin-user-guide/579)
 
@@ -211,15 +210,16 @@
     chmod +x setup_crowdsec_manager.sh
     ./setup_crowdsec_manager.sh
     ```
-    
-11. Deploy the stack and check if it starts without issues
-12. Destroy the stack
+
+11. Destroy the stack
+12. Deploy the stack and check if it starts without issues
+13. Destroy the stack
 
 ℹ️ Continue using instructions from [HHF Technology Forum](https://forum.hhf.technology/t/implementing-geoblocking-in-pangolin-stack-with-traefik/490)
 
 ⚠️ Optionally check for new version [releases](https://github.com/david-garcia-garcia/traefik-geoblock/releases)
 
-13. ```
+14. ```
     cd /home/docker/pangolin-core/appdata/config/traefik
     
     awk '/^      middlewares:$/ {print; print "        - pangolin-geoblock@file"; next} 1' traefik_config.yml > tmp && mv tmp traefik_config.yml
@@ -255,32 +255,32 @@
     nano /opt/docker/pangolin-core/appdata/config/traefik/dynamic_config.yml
     ...
 
-14. Uncomment the following line in the compose.yml file (through Komodo)
+15. Uncomment the following line in the compose.yml file (through Komodo)
 
     ```
      - .appdata/IP2LOCATION-LITE-DB1.IPV6.BIN:/plugins-storage/IP2LOCATION-LITE-DB1.IPV6.BIN
     ```
 
-15. ```
+16. ```
     cd /opt/docker/pangolin-core/appdata
     wget https://github.com/david-garcia-garcia/traefik-geoblock/raw/refs/heads/master/IP2LOCATION-LITE-DB1.IPV6.BIN
     ```
 
-16. Deploy the stack and check if it starts without issues
-17. Destroy the stack
-18. ```
+17. Deploy the stack and check if it starts without issues
+18. Destroy the stack
+19. ```
     curl -s https://install.crowdsec.net | sudo sh
     apt update
     apt install crowdsec-firewall-bouncer-iptables -y
     ```
-19. Open the terminal of CrowdSec in Komodo and use the following command. Copy the key
+20. Open the terminal of CrowdSec in Komodo and use the following command. Copy the key
     ```
     cscli bouncers add host-firewall-bouncer-pangolin-service
     ```
 
 ‼️ Replace `<REPLACE_API_KEY>` with generated API key
     
-20. ```
+21. ```
     awk '{gsub(/127.0.0.1:8080/, "localhost:8080")}1' /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml > tmp.yaml && mv tmp.yaml /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
     awk '{gsub(/<API_KEY>/, "<REPLACE_API_KEY>")}1' /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml > tmp.yaml && mv tmp.yaml /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
     awk '{gsub(/disable_ipv6: false/, "disable_ipv6: true")}1' /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml > tmp.yaml && mv tmp.yaml /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
