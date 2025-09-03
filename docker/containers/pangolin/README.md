@@ -1,6 +1,5 @@
 [03-09-2025]
 ## Requirements
- - VM setup using Proxmox script
  - Komodo core server
  - Domain managed through Cloudflare
 
