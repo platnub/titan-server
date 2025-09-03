@@ -216,7 +216,7 @@
 ⚠️ Optionally check for new version [releases](https://github.com/david-garcia-garcia/traefik-geoblock/releases)
 
 11. ```
-    cd /home/docker/pangolin-core/appdata/config/traefik
+    cd /opt/docker/pangolin-core/appdata/config/traefik
     
     awk '/^      middlewares:$/ {print; print "        - pangolin-geoblock@file"; next} 1' traefik_config.yml > tmp && mv tmp traefik_config.yml
     awk '/^  plugins:$/ {print; print "    geoblock:"; print "      moduleName: github.com/david-garcia-garcia/traefik-geoblock"; print "      version: v1.1.1"; next} 1' traefik_config.yml > tmp && mv tmp traefik_config.yml
