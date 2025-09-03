@@ -24,7 +24,7 @@
 6. Destroy the stack
 Configure wildcard certificates using instructions from [Pangolin]()
 7. ```
-   import fileinput; [print(line if "        cert_resolver: "letsencrypt"" not in line else line + "        prefer_wildcard_cert: true\n", end='') for line in fileinput.input('config.yml', inplace=True)]
+   sed -i '/^        cert_resolver: "letsencrypt"$/        prefer_wildcard_cert: true\n' config.yml
    ```
 ℹ️ Continue using instructions from [ - HHF Technology Forum](https://forum.hhf.technology/t/crowdsec-manager-for-pangolin-user-guide/579)
 8. 
