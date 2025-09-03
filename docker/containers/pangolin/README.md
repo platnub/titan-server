@@ -4,17 +4,15 @@
 - Pangolin VPS setup using script
 
 ℹ️ Start install using instructions from [Pangolin](https://docs.digpangolin.com/self-host/quick-install)
-1.
-   ```
+1. ```
    mkdir /opt/docker/pangolin-core && cd/opt/docker/pangolin-core
    curl -fsSL https://digpangolin.com/get-installer.sh | bash
    sudo ./installer
    ```
 ‼️ Follow installer instructions
-   - [Optional] Email setup
-   - [Highly Recommended] CrowdSec installation
-2. 
-   ```
+  - [Optional] Email setup
+  - [Highly Recommended] CrowdSec installation
+2. ```
    docker compose down
    rm -rf installer && rm -rf config.tar.gz
    mkdir appdata
