@@ -25,7 +25,7 @@
 Configure wildcard certificates using instructions from [Pangolin]()
 6. ```
    awk '/^        cert_resolver: "letsencrypt"$/ {print; print "        prefer_wildcard_cert: true"; next} 1' config.yml > tmp && mv tmp config.yml
-   awk '/^    acme:"$/ {
+   awk '/^    acme:$/ {
        print;
        print "        provider: \"cloudflare\"";
        next
