@@ -9,9 +9,11 @@
    curl -fsSL https://digpangolin.com/get-installer.sh | bash
    sudo ./installer
    ```
+   
 ‼️ Follow installer instructions
  - [Optional] Email setup
  - [Highly Recommended] CrowdSec installation
+
 2. ```
    docker compose down
    rm -rf installer && rm -rf config.tar.gz
@@ -19,11 +21,13 @@
    mv config appdata
    chown -R komodo:komodo /opt/docker/pangolin-core
    ```
+
 3. Create pangolin-core stack in Komodo using [compose.yml](https://github.com/platnub/titan-server/blob/main/docker/containers/pangolin/compose.yml)
 4. Deploy the stack and check if it starts without issues
 5. Destroy the stack
 
 ℹ️ Configure wildcard certificates using instructions from [Pangolin]()
+
 9. ```
    cd /opt/docker/pangolin-core/appdata/config
    awk '/^        cert_resolver: "letsencrypt"$/ {print; print "        prefer_wildcard_cert: true"; next} 1' config.yml > tmp && mv tmp config.yml
