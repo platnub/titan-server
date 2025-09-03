@@ -246,8 +246,6 @@
       print "            X-Skip-Geoblock: 1";
       next
     } 1' dynamic_config.yml > tmp && mv tmp dynamic_config.yml
-
-
     ```
 
 ‼️ Decide which allowedCountries you want to add from [this list](https://github.com/platnub/titan-server/blob/main/docker/containers/pangolin/geoblock_country_list.yml) or find more [here](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2#Officially_assigned_code_elements)
@@ -259,7 +257,7 @@
 14. Uncomment the following line in the compose.yml file (through Komodo)
 
     ```
-     - ./IP2LOCATION-LITE-DB1.IPV6.BIN:/plugins-storage/IP2LOCATION-LITE-DB1.IPV6.BIN
+     - .appdata/IP2LOCATION-LITE-DB1.IPV6.BIN:/plugins-storage/IP2LOCATION-LITE-DB1.IPV6.BIN
     ```
 
 15. ```
