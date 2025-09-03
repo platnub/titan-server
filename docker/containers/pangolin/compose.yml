@@ -94,7 +94,7 @@ services:
     network_mode: service:gerbil
     restart: always
 #    environment:
-#      CLOUDFLARE_DNS_API_TOKEN: "sr3jlZFZ9LyQGDhg0lMVao7xnRQo3BX3CcS9j9Ax"
+#      CLOUDFLARE_DNS_API_TOKEN: "<cloudflare_api_key>"
     volumes:
       - ./appdata/config/traefik:/etc/traefik:ro
       - ./appdata/config/letsencrypt:/letsencrypt
