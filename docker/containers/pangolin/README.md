@@ -29,14 +29,50 @@
 
 ℹ️ Configure wildcard certificates using instructions from [Pangolin]()
 
+‼️ Make sure to replace example.com
+
 6. ```
    cd /opt/docker/pangolin-core/appdata/config
    awk '/^        cert_resolver: "letsencrypt"$/ {print; print "        prefer_wildcard_cert: true"; next} 1' config.yml > tmp && mv tmp config.yml
    cd traefik
    sed -i 's/^      httpChallenge:$/      dnsChallenge:/' traefik_config.yml
    sed -i 's/^        entryPoint: web$/        provider: "cloudflare"/' traefik_config.yml
-   awk '/^        cert_resolver: "letsencrypt"$/ {print; print "        prefer_wildcard_cert: true"; next} 1' dynamic_config.yml > tmp && mv tmp dynamic_config.yml
+   awk '
+   /^      service: next-service$/ {
+       service_line = $0;
+       getline;  # Read next line
+       tls_line = $0;
+       getline;  # Read next line
+       cert_line = $0;
+       if (tls_line ~ /^      tls:$/ && cert_line ~ /^        certResolver: letsencrypt$/) {
+           print service_line;
+           print tls_line;
+           print cert_line;
+           print "        domains:";
+           print "          - main: \"example.com\"";
+           print "            sans:";
+           print "              - \"*.example.com\"";
+       next
+       }
+       print service_line;
+       print tls_line;
+       print cert_line;
+       next;
+   }
+   1' dynamic_config.yml > tmp && mv tmp dynamic_config.yml
    ```
+
+7. Uncomment the following 2 lines in the compose.yml file (through Komodo) and fill in your Cloudflare API key.
+   Cloudflare API key requirements:
+    - Zone/Zone/Read
+    - Zone/DNS/Edit
+    - Apply to all zones
+
+   ```
+     environment:
+       CLOUDFLARE_DNS_API_TOKEN: "your-cloudflare-api-token"
+   ```
+
 ℹ️ Continue using instructions from [ - HHF Technology Forum](https://forum.hhf.technology/t/crowdsec-manager-for-pangolin-user-guide/579)
 
 7. 
