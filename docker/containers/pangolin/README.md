@@ -266,20 +266,19 @@
     ```
 
 15. Deploy the stack and check if it starts without issues
-16. Destroy the stack
-17. ```
+16. ```
     curl -s https://install.crowdsec.net | sudo sh
     apt update
     apt install crowdsec-firewall-bouncer-iptables -y
     ```
-18. Open the terminal of CrowdSec in Komodo and use the following command. Copy the key
+17. Open the terminal of CrowdSec in Komodo and use the following command. Copy the key
     ```
     cscli bouncers add host-firewall-bouncer-pangolin-service
     ```
 
 ‼️ Replace `<REPLACE_API_KEY>` with generated API key
     
-19. ```
+18. ```
     awk '{gsub(/127.0.0.1:8080/, "localhost:8080")}1' /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml > tmp.yaml && mv tmp.yaml /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
     awk '{gsub(/<API_KEY>/, "<REPLACE_API_KEY>")}1' /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml > tmp.yaml && mv tmp.yaml /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
     awk '{gsub(/disable_ipv6: false/, "disable_ipv6: true")}1' /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml > tmp.yaml && mv tmp.yaml /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
