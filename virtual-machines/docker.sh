@@ -204,7 +204,6 @@ function default_settings() {
   MAC="$GEN_MAC"
   VLAN=""
   MTU=""
-  SSH_PORT="22"
   START_VM="yes"
   METHOD="default"
   echo -e "${CONTAINERID}${BOLD}${DGN}Virtual Machine ID: ${BGN}${VMID}${CL}"
@@ -219,7 +218,6 @@ function default_settings() {
   echo -e "${MACADDRESS}${BOLD}${DGN}MAC Address: ${BGN}${MAC}${CL}"
   echo -e "${VLANTAG}${BOLD}${DGN}VLAN: ${BGN}Default${CL}"
   echo -e "${DEFAULT}${BOLD}${DGN}Interface MTU Size: ${BGN}Default${CL}"
-  echo -e "${DEFAULT}${BOLD}${DGN}SSH Port: ${BGN}${SSH_PORT}${CL}"
   echo -e "${GATEWAY}${BOLD}${DGN}Start VM when completed: ${BGN}yes${CL}"
   echo -e "${CREATING}${BOLD}${DGN}Creating a Docker VM using the above default settings${CL}"
 }
@@ -376,14 +374,7 @@ function advanced_settings() {
   else
     exit-script
   fi
-  if SSH_PORT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --inputbox "Set SSH Port (leave blank for default 22)" 8 58 --title "SSH PORT" --cancel-button Exit-Script 3>&1 1>&2 2>&3); then
-    if [ -z $SSH_PORT ]; then
-      SSH_PORT="22"
-      echo -e "${DEFAULT}${BOLD}${DGN}SSH Port: ${BGN}$SSH_PORT${CL}"
-    else
-      echo -e "${DEFAULT}${BOLD}${DGN}SSH Port: ${BGN}$SSH_PORT${CL}"
-    fi
-    if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "IMPROVE FILE CACHING" --yesno --defaultno "Improve file caching for file servers? (Nextcloud, Jellyfin/Plex?" 10 58); then
+  if FILE_CACHING=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "IMPROVE FILE CACHING" --yesno --defaultno "Improve file caching for file servers? (Nextcloud, Jellyfin/Plex?" 10 58); then
       echo -e "${GATEWAY}${BOLD}${DGN}Improve file caching: ${BGN}yes${CL}"
       FILE_CACHING="yes"
     else
@@ -507,18 +498,6 @@ msg_info "Creating Docker user and locking root user"
   virt-customize -q -a "${FILE}" --password $HN:password:${SUDO_PASSWORD} >/dev/null &&
   virt-customize -q -a "${FILE}" --run-command "passwd -l root" >/dev/null &&
 msg_ok "${HN} Docker user created and root user locked"
-msg_info "Installing, configuring and restarting SSH"
-  virt-customize -q -a "${FILE}" --run-command "apt install ssh -y" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "apt-get install fail2ban -y" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "sed -i 's/\#Port 22/Port ${SSH_PORT}/' /etc/ssh/sshd_config" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "systemctl restart sshd" >/dev/null
-msg_ok "SSH installed"
-msg_info "Installing, configuring and reloading UFW Firewall"
-  virt-customize -q -a "${FILE}" --run-command "apt install ufw -y" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "ufw --force enable" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "ufw allow ${SSH_PORT}" >/dev/null &&
-  virt-customize -q -a "${FILE}" --run-command "ufw reload" >/dev/null
-msg_ok "UFW installed"
   if [ "$FILE_CACHING" == "yes" ]; then
     msg_info "Improving file caching"
     virt-customize -q -a " echo -e 'vm.swappiness=10\nvm.vfs_cache_pressure = 50\nfs.inotify.max_user_watches=262144' >> /etc/sysctl.conf"
