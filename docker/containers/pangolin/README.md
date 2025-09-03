@@ -4,9 +4,9 @@
        curl -fsSL https://digpangolin.com/get-installer.sh | bash
        sudo ./installer
        ```
-  3. Follow instructions
-     - [Optional] Email setup
-     - [Highly Recommended] CrowdSec installation
-  4. ```
-     docker compose down
-     ```
+    3. Follow instructions
+       - [Optional] Email setup
+       - [Highly Recommended] CrowdSec installation
+    4. ```
+       docker compose down
+       ```
