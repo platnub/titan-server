@@ -63,7 +63,7 @@
    ```
 
 7. Uncomment the following 2 lines in the compose.yml file (through Komodo) and fill in your Cloudflare API key.
-   Cloudflare API key requirements:
+\n   Cloudflare API key requirements:
     - Zone/Zone/Read
     - Zone/DNS/Edit
     - Apply to all zones
