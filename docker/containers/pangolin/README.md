@@ -23,7 +23,6 @@
 ‼️ It will prompt you to set the "pangolin-service" (sudo) password when finished
 
 1. ```
-   sudo su
    # Install SSH and UFW
    apt-get update -y && apt-get upgrade -y
    apt-get install ssh -y
