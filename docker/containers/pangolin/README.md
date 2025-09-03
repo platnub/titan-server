@@ -2,21 +2,89 @@
 ## Requirements
  - VM setup using Proxmox script
  - Domain managed through Cloudflare
- - Pangolin VPS setup using script
 
-ℹ️ Start Pangolin install using instructions from [Pangolin](https://docs.digpangolin.com/self-host/quick-install)
+⚠️ Incase anything goes wrong, example files are in the config folder.
+
+‼️ Replace <ssh_port>
+
+‼️ It will prompt you to set the "komodo" password when finished
+
+1. ```
+   # Install everything
+   apt-get update -y && apt-get upgrade -y
+   apt-get install ssh -y
+   apt-get install fail2ban -y
+   apt-get install ufw -y
+   
+   # Configure users
+   useradd -r pangolin-service
+   usermod -aG sudo pangolin-service
+   passwd -l root
+   useradd -r pangolin
+   useradd --create-home komodo
+   usermod -aG docker komodo
+
+   # Change SSH port, disable IPv6, Setup UFW firewall
+   sed -i 's/\#Port 22/Port <ssh_port> /' /etc/ssh/sshd_config
+   sed -i 's|ExecStart=/opt/digitalocean/bin/droplet-agent |ExecStart=/opt/digitalocean/bin/droplet-agent -sshd_port=<ssh_port>|g' /etc/init/droplet-agent.conf
+   systemctl daemon-reload
+   systemctl restart sshd
+   echo -e "\n# Disabling the IPv6\nnet.ipv6.conf.all.disable_ipv6 = 1\nnet.ipv6.conf.default.disable_ipv6 = 1\nnet.ipv6.conf.lo.disable_ipv6 = 1" | sudo tee -a /etc/sysctl.conf > /dev/null
+   sysctl -p
+   sed -i 's|IPV6=yes|IPV6=no|g' /etc/default/ufw
+   ufw default deny incoming
+   ufw default allow outgoing
+   ufw allow <ssh_port>
+   ufw allow 80/tcp
+   ufw allow 443/tcp
+   ufw allow 51820/udp
+   ufw allow 8120/tcp
+   ufw --force enable
+   
+   # Install and configure Docker
+   apt-get install ca-certificates curl
+   install -m 0755 -d /etc/apt/keyrings
+   curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+   chmod a+r /etc/apt/keyrings/docker.asc
+   echo \
+     "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
+     $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+     tee /etc/apt/sources.list.d/docker.list > /dev/null
+   apt update -y
+   apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+   
+   # Create folders
+   mkdir /opt/docker
+   chown komodo:komodo /opt/docker
+   chmod 700 /opt/docker
+   passwd komodo
+   ```
+
+   ‼️ Set user "komodo" password
+
+   ```
+   passwd pangolin
+   ```
+
+   ‼️ Set user "pangolin" password
+
+   ```
+   passwd pangolin
+   ```
+
+ℹ️ Start the Pangolin install using instructions from [Pangolin](https://docs.digpangolin.com/self-host/quick-install)
 
 ‼️ Follow installer instructions
  - [Optional] Email setup
  - [Highly Recommended] CrowdSec installation
 
-1. ```
+2. ```
    mkdir /opt/docker/pangolin-core && cd/opt/docker/pangolin-core
    curl -fsSL https://digpangolin.com/get-installer.sh | bash
    sudo ./installer
    ```
 
-2. ```
+3. ```
    docker compose down
    rm -rf installer && rm -rf config.tar.gz
    mkdir appdata
@@ -24,13 +92,13 @@
    chown -R komodo:komodo /opt/docker/pangolin-core
    ```
 
-3. Create pangolin-core stack in Komodo using [compose.yml](https://github.com/platnub/titan-server/blob/main/docker/containers/pangolin/compose.yml)
-4. Deploy the stack and check if it starts without issues
-5. Destroy the stack
+4. Create pangolin-core stack in Komodo using [compose.yml](https://github.com/platnub/titan-server/blob/main/docker/containers/pangolin/compose.yml)
+5. Deploy the stack and check if it starts without issues
+6. Destroy the stack in Komodo
 
 ℹ️ Configure wildcard certificates using instructions from [Pangolin]()
 
-‼️ Make sure to replace example.com
+‼️ Replace example.com
 
 6. ```
    cd /opt/docker/pangolin-core/appdata/config
@@ -83,7 +151,7 @@
 ‼️ Use the following options when the script starts
  - [Recommended] Option 10: Enroll with CrowdSec console (Login in to the [CrowdSec console](https://app.crowdsec.net/) and get the string from the "Connect with console" command at the bottom
  - [Recommended] Option 11: Set up custom scenarios
- - [Recommended] Option 12: Set up captcha protections (Get an API key from [Cloudflare Turnstile](https://dash.cloudflare.com/). Make it "non-interactive")
+ - [Recommended] Option 12: Set up captcha protections (Get an API key from [Cloudflare Turnstile](https://dash.cloudflare.com/). Make it "Non-interactive")
 
 10. ```
     curl -o setup_crowdsec_manager.sh https://gist.githubusercontent.com/hhftechnology/aadadf48ac906fc38cfd0d7088980475/raw/0a384d518e74c9963a51fcfb60d5ef5bccf9f645/setup_crowdsec_manager.sh
@@ -91,4 +159,5 @@
     ./setup_crowdsec_manager.sh
     ```
     
-12. Destroy the stack
+12. Destroy the stack in Komodo
+13. 
