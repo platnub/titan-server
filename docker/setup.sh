@@ -45,8 +45,8 @@ mkdir -p /home/komodo/.config/komodo && cd /home/komodo/.config/komodo && curl -
 # Modify config options of Periphery
 ## root_directory = "/home/komodo/periphery"
 sed -i 's|root_directory = "/etc/komodo"|root_directory = "/home/komodo/periphery"|g' ./periphery.config.toml
-## allowed_ips = "[" 10.0.20.250 "]"
-sed -i 's|allowed_ips = \[\]|allowed_ips = \["10.0.20.250"\]|g' ./periphery.config.toml
+## allowed_ips = [1.2.3.0/24,1.2.3.4]
+sed -i 's|allowed_ips = \[\]|allowed_ips = \["<allowed_ips>"\]|g' ./periphery.config.toml
 ## stack_dir = "/opt/docker"
 sed -i 's|# stack_dir = "/etc/komodo/stacks"|stack_dir = "/opt/docker"|g' ./periphery.config.toml
 ## stats_polling_rate = "1-sec"
@@ -54,6 +54,8 @@ sed -i 's|stats_polling_rate = "5-sec"|stats_polling_rate = "1-sec"|g' ./periphe
 ## container_stats_polling_rate = "1-sec"
 sed -i 's|container_stats_polling_rate = "30-sec"|container_stats_polling_rate = "1-sec"|g' ./periphery.config.toml
 # Install Periphery
+cd /home/komodo
 curl -sSL https://raw.githubusercontent.com/moghtech/komodo/main/scripts/setup-periphery.py | python3 - --user
 loginctl enable-linger $USER
 systemctl --user enable periphery
+systemctl --user status periphery
