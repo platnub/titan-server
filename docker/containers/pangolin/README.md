@@ -27,6 +27,7 @@ Configure wildcard certificates using instructions from [Pangolin]()
    awk '/^        cert_resolver: "letsencrypt"$/ {print; print "        prefer_wildcard_cert: true"; next} 1' config.yml > tmp && mv tmp config.yml
    awk '/^    acme:$/ {
        print;
+       print "      dnsChallenge:";
        print "        provider: \"cloudflare\"";
        next
    } 1' traefik_config.yml > tmp && mv tmp traefik_config.yml
