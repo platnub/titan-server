@@ -22,7 +22,7 @@
 3. Create pangolin-core stack in Komodo using [compose.yml](https://github.com/platnub/titan-server/blob/main/docker/containers/pangolin/compose.yml)
 4. Deploy the stack and check if it starts without issues
 5. Destroy the stack
-Configure wildcard certificates using instructions from [Pangolin]()
+ℹ️ Configure wildcard certificates using instructions from [Pangolin]()
 6. ```
    cd /opt/docker/pangolin-core/appdata/config
    awk '/^        cert_resolver: "letsencrypt"$/ {print; print "        prefer_wildcard_cert: true"; next} 1' config.yml > tmp && mv tmp config.yml
