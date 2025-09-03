@@ -250,12 +250,19 @@
 
     ```
 
-‼️ 
+‼️ Decide which allowedCountries you want to add from [this list](https://github.com/platnub/titan-server/blob/main/docker/containers/pangolin/geoblock_country_list.yml) or find more [here](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2#Officially_assigned_code_elements)
 
     ```
-    
+    nano /opt/docker/pangolin-core/appdata/config/traefik/dynamic_config.yml
     ...
 
-14. ```
-    
+14. Uncomment the following line in the compose.yml file (through Komodo)
+
+    ```
+     - ./IP2LOCATION-LITE-DB1.IPV6.BIN:/plugins-storage/IP2LOCATION-LITE-DB1.IPV6.BIN
+    ```
+
+15. ```
+    cd /opt/docker/pangolin-core/appdata
+    wget https://github.com/david-garcia-garcia/traefik-geoblock/raw/refs/heads/master/IP2LOCATION-LITE-DB1.IPV6.BIN
     ```
