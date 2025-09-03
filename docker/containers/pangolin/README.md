@@ -264,3 +264,5 @@
     cd /opt/docker/pangolin-core/appdata
     wget https://github.com/david-garcia-garcia/traefik-geoblock/raw/refs/heads/master/IP2LOCATION-LITE-DB1.IPV6.BIN
     ```
+
+16. Deploy the stack and check if it starts without issues
