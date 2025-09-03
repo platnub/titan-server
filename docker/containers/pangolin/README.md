@@ -3,7 +3,7 @@
 - VM setup using Proxmox script
 - Pangolin VPS setup using script
 
-_Start install using instructions from: https://docs.digpangolin.com/self-host/quick-install_
+$${\color{lightblue}Start install using instructions from: https://docs.digpangolin.com/self-host/quick-install}$$
 1. ```
    mkdir /opt/docker/pangolin-core && cd/opt/docker/pangolin-core
    curl -fsSL https://digpangolin.com/get-installer.sh | bash
