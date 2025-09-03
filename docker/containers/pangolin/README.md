@@ -284,4 +284,5 @@
     awk '{gsub(/disable_ipv6: false/, "disable_ipv6: true")}1' /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml > tmp.yaml && mv tmp.yaml /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
     awk '{gsub(/#  - DOCKER-USER/, "  - DOCKER-USER")}1' /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml > tmp.yaml && mv tmp.yaml /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
     systemctl restart crowdsec-firewall-bouncer.service
+    sed -i '/^  ipv6:/,/^    enabled:/ s/^    enabled: true/    enabled: false/' /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
     ```
