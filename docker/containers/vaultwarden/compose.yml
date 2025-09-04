@@ -5,12 +5,14 @@ networks:
 ########################### SERVICES
 services:
   vaultwarden:
-    image: vaultwarden/server:latest
     container_name: vaultwarden
+    image: vaultwarden/server:latest
     restart: always
-    user: 1000:1000
+    user: ${PUID}:${PGID}
     ports:
       - '80:80'
+    volumes:
+      - ./appdata/data/:/data/
     environment:
       TZ: $TZ
       DOMAIN: $DOMAIN
@@ -32,5 +34,3 @@ services:
       # EU settings https://bitwarden.com/host/
       PUSH_RELAY_URI: 'https://api.bitwarden.eu'
       PUSH_IDENTITY_URI: 'https://identity.bitwarden.eu'
-    volumes:
-      - $CONTAINERDIR/appdata/data/:/data/
