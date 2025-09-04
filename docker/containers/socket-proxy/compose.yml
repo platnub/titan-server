@@ -5,7 +5,7 @@ networks:
   default:
     driver: bridge
   socket_proxy:
-    name: socket_proxy
+    name: socket-proxy
     driver: bridge
     ipam:
       config:
@@ -21,7 +21,7 @@ services:
       - no-new-privileges:true
     restart: always
     networks:
-      socket_proxy:
+      socket-proxy:
         ipv4_address: 192.168.0.254 # You can specify a static IP
     privileged: true # true for VM. False (default) for unprivileged LXC container.
     # ports:
