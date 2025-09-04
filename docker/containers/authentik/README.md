@@ -14,7 +14,7 @@
 4. Deploy the stack and go to authentik.example.com/if/flow/initial-setup/
 
 # Extra guides
-## Create Custom Flow
+## Create Custom Flow _[source](https://www.youtube.com/watch?v=aEpT2fYGwLw)_
 ## Cloudflare Turnstile Captchas _[source](https://www.youtube.com/watch?v=Fe5SttNa2lU)_
 1. Create Turnstile widget on [Cloudflare](https://dash.cloudflare.com/)
 2. Create new Stage in Authentik
