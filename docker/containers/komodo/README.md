@@ -49,7 +49,7 @@
    ```
 2. Create komodo container
    ```
-   mkdir /opt/docker/komodo && cd cd /opt/docker/komodo
+   mkdir /opt/docker/komodo && cd /opt/docker/komodo
    wget https://github.com/platnub/container-host-templates/blob/main/docker/containers/komodo/.env
    wget https://github.com/platnub/container-host-templates/blob/main/docker/containers/komodo/compose.yml
    ```
