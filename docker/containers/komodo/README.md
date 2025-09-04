@@ -50,8 +50,8 @@
 2. Create komodo container
    ```
    mkdir /opt/docker/komodo && cd /opt/docker/komodo
-   curl "https://github.com/platnub/container-host-templates/blob/main/docker/containers/komodo/.env"
-   curl "https://github.com/platnub/container-host-templates/blob/main/docker/containers/komodo/compose.yml"
+   curl -o compose.yml "https://github.com/platnub/container-host-templates/blob/main/docker/containers/komodo/compose.yml"
+   curl -o .env "https://github.com/platnub/container-host-templates/blob/main/docker/containers/komodo/.env"
    ```
 3. Edit .env file
        - Use `openssl rand -hex 64` for PASSKEY and JWT
