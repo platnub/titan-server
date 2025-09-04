@@ -69,7 +69,6 @@ services:
   periphery:
     image: ghcr.io/moghtech/komodo-periphery:${COMPOSE_KOMODO_IMAGE_TAG:-latest}
     restart: always
-    user: ${PUID}:${PGID}
     networks:
       - komodo
     volumes:
