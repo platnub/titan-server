@@ -13,3 +13,11 @@
 1. ```
    curl -fsSL https://github.com/platnub/titan-server/blob/main/docker/setup.sh
    ```
+# Container user accounts
+
+⚠️ Not all containers can run as an unpriveledged user
+
+```
+useradd -r <container-name>
+id <conatiner-name>
+```
