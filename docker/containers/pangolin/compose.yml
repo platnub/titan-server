@@ -12,35 +12,27 @@ volumes:
 
 ########################### SERVICES
 services:
-  crowdsec:
-    container_name: crowdsec
-    image: docker.io/crowdsecurity/crowdsec:latest
+  traefik:
+    container_name: traefik
+    image: docker.io/traefik:v3.5
     restart: always
-    ports:
-      - 6060:6060
-      - 8080:8080
+    network_mode: service:gerbil
+#    environment:
+#      CLOUDFLARE_DNS_API_TOKEN: "<cloudflare_api_key>"
     volumes:
-      - ./appdata/config/crowdsec:/etc/crowdsec
-      - ./appdata/config/crowdsec/db:/var/lib/crowdsec/data
+      - ./appdata/config/traefik:/etc/traefik:ro
+      - ./appdata/config/letsencrypt:/letsencrypt
       - ./appdata/config/traefik/logs:/var/log/traefik
-    command: -t
-    environment:
-      COLLECTIONS: crowdsecurity/traefik crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules
-      ENROLL_INSTANCE_NAME: pangolin-crowdsec
-      ENROLL_TAGS: docker
-      GID: "1000"
-      PARSERS: crowdsecurity/whitelists
-    labels:
-      - traefik.enable=false
-    healthcheck:
-      interval: 10s
-      retries: 15
-      test:
-        - CMD
-        - cscli
-        - capi
-        - status
-      timeout: 10s
+      - pangolin-data:/var/certificates:ro
+      - pangolin-data:/var/dynamic:ro
+#      - ./appdata/IP2LOCATION-LITE-DB1.IPV6.BIN:/plugins-storage/IP2LOCATION-LITE-DB1.IPV6.BIN
+    command:
+      - --configFile=/etc/traefik/traefik_config.yml
+    depends_on:
+      crowdsec:
+        condition: service_healthy
+      pangolin:
+        condition: service_healthy
 
   gerbil:
     container_name: gerbil
@@ -81,24 +73,32 @@ services:
         - http://localhost:3001/api/v1/
       timeout: 10s
 
-  traefik:
-    container_name: traefik
-    image: docker.io/traefik:v3.5
+  crowdsec:
+    container_name: crowdsec
+    image: docker.io/crowdsecurity/crowdsec:latest
     restart: always
-    network_mode: service:gerbil
-#    environment:
-#      CLOUDFLARE_DNS_API_TOKEN: "<cloudflare_api_key>"
+    ports:
+      - 6060:6060
+      - 8080:8080
     volumes:
-      - ./appdata/config/traefik:/etc/traefik:ro
-      - ./appdata/config/letsencrypt:/letsencrypt
+      - ./appdata/config/crowdsec:/etc/crowdsec
+      - ./appdata/config/crowdsec/db:/var/lib/crowdsec/data
       - ./appdata/config/traefik/logs:/var/log/traefik
-      - pangolin-data:/var/certificates:ro
-      - pangolin-data:/var/dynamic:ro
-#      - ./appdata/IP2LOCATION-LITE-DB1.IPV6.BIN:/plugins-storage/IP2LOCATION-LITE-DB1.IPV6.BIN
-    command:
-      - --configFile=/etc/traefik/traefik_config.yml
-    depends_on:
-      crowdsec:
-        condition: service_healthy
-      pangolin:
-        condition: service_healthy
+    command: -t
+    environment:
+      COLLECTIONS: crowdsecurity/traefik crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules
+      ENROLL_INSTANCE_NAME: pangolin-crowdsec
+      ENROLL_TAGS: docker
+      GID: "1000"
+      PARSERS: crowdsecurity/whitelists
+    labels:
+      - traefik.enable=false
+    healthcheck:
+      interval: 10s
+      retries: 15
+      test:
+        - CMD
+        - cscli
+        - capi
+        - status
+      timeout: 10s
