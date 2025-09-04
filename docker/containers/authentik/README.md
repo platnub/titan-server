@@ -1,3 +1,8 @@
+# Info
+ - Pangolin connection: https://authentik:9443
+   - Leave unprotected
+
+# Instructions
 1. Create stack in Komodo using [compose.yml](https://github.com/platnub/titan-server/blob/main/docker/containers/authentik/compose.yml) and [.env](https://github.com/platnub/titan-server/blob/main/docker/containers/authentik/.env)
 2. Use these commands to generate 2 secrets and paste them into the .env
 ```
