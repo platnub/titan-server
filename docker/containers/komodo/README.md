@@ -23,7 +23,7 @@
    sed -i 's|IPV6=yes|IPV6=no|g' /etc/default/ufw
    ufw default deny incoming
    ufw default allow outgoing
-   ufw allow <ssh_port>
+   ufw allow <ssh_port>/tcp
    ufw allow 9120/tcp
    ufw --force enable
    
