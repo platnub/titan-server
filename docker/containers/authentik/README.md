@@ -4,4 +4,5 @@
 "PG_PASS=$(openssl rand -base64 36 | tr -d '\n')"
 "AUTHENTIK_SECRET_KEY=$(openssl rand -base64 60 | tr -d '\n')"
 ```
-3. Deploy the stack and go to authentik.example.com/if/flow/initial-setup/
+3. Fill in the rest of the .env variables
+4. Deploy the stack and go to authentik.example.com/if/flow/initial-setup/
