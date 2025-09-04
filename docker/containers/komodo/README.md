@@ -16,13 +16,13 @@ Use `openssl rand -hex 64` for PASSKEY and JWT
    apt-get install ssh -y
    apt-get install fail2ban -y
    apt-get install ufw -y
-    
+   
    # Configure users
    useradd --create-home komodo
    
    # Change SSH port, disable IPv6, Setup UFW firewall
    sed -i 's/\#Port 22/Port <ssh_port> /' /etc/ssh/sshd_config
-    
+   
    systemctl daemon-reload
    systemctl restart sshd
    echo -e "\n# Disabling the IPv6\nnet.ipv6.conf.all.disable_ipv6 = 1\nnet.ipv6.conf.default.disable_ipv6 = 1\nnet.ipv6.conf.lo.disable_ipv6 = 1" | sudo tee -a /etc/sysctl.conf > /dev/null
