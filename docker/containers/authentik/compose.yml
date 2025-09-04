@@ -2,6 +2,8 @@
 networks:
   authentik:
     name: authentik
+  socket_proxy:
+    external: true
 
 ########################### VOLUMES
 volumes:
