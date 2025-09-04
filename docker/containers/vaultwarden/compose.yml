@@ -29,7 +29,7 @@ services:
       PUSH_ENABLED: true
       PUSH_INSTALLATION_ID: $PUSH_INSTALLATION_ID
       PUSH_INSTALLATION_KEY: $PUSH_INSTALLATION_KEY
-      # EU settings
+      # EU settings https://bitwarden.com/host/
       PUSH_RELAY_URI: 'https://api.bitwarden.eu'
       PUSH_IDENTITY_URI: 'https://identity.bitwarden.eu'
     volumes:
