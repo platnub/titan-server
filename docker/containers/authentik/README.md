@@ -8,4 +8,4 @@
 "PG_PASS=$(openssl rand -base64 36 | tr -d '\n')"
 "AUTHENTIK_SECRET_KEY=$(openssl rand -base64 60 | tr -d '\n')"
 ```
-4. Deploy the stack and go to authentik.example.comif/flow/initial-setup/
+4. Deploy the stack and go to authentik.example.com/if/flow/initial-setup/
