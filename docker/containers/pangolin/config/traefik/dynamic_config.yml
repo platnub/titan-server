@@ -1,53 +1,156 @@
 http:
   middlewares:
+    pangolin-geoblock:
+      plugin:
+        geoblock:
+          enabled: true
+          defaultAllow: false
+          databaseFilePath: "/plugins-storage/IP2LOCATION-LITE-DB1.IPV6.BIN"
+          allowPrivate: true
+          logBannedRequests: true
+          banIfError: true
+          disallowedStatusCode: 403
+          allowedCountries:
+            # Nato allied countries
+            - AL # Albania
+            - BE # Belgium
+            - BG # Bulgaria
+            - CN # Canada
+            - HR # Croata
+            - CZ # Czech Republic
+            - DK # Denmark
+            - EE # Estonia
+            - FI # Finland
+            - FR # France
+            - DE # Germany
+            - GR # Greece
+            - HU # Hungary
+            - IS # Iceland
+            - IT # Italy
+            - LV # Latvia
+            - LT # Lithuania
+            - LU # Luxembourgh
+            - ME # Montenegro
+            - NL # Netherlands
+            - MK # North Macedonia
+            - NO # Norway
+            - PL # Poland
+            - PT # Portugal
+            - RO # Romania
+            - SK # Slovakia
+            - SI # Slovenia
+            - ES # Spain
+            - SE # Sweden
+            - TR # Turkey
+            - GB # United Kingdom
+            - US # United States
+          allowedIPBlocks:
+            - 192.168.0.0/16
+            - 10.0.0.0/8
+          bypassHeaders:
+            X-Internal-Request: true
+            X-Skip-Geoblock: 1
+    crowdsec:
+      plugin:
+        crowdsec:
+          clientTrustedIPs:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 100.89.137.0/20
+          crowdsecAppsecBodyLimit: 10485760
+          crowdsecAppsecEnabled: true
+          crowdsecAppsecFailureBlock: true
+          crowdsecAppsecHost: crowdsec:7422
+          crowdsecAppsecUnreachableBlock: true
+          crowdsecLapiHost: crowdsec:8080
+          crowdsecLapiKey: <crowdsec_api_key>
+          crowdsecLapiScheme: http
+          crowdsecMode: live
+          defaultDecisionSeconds: 15
+          enabled: true
+          captchaProvider: turnstile
+          captchaSiteKey: "<turnstile_captcha_site_key>"
+          captchaSecretKey: "<turnstile_catpcha_secret_key>"
+          captchaGracePeriodSeconds: 1800
+          captchaHTMLFilePath: "/etc/traefik/conf/captcha.html"
+          forwardedHeadersTrustedIPs:
+            - 0.0.0.0/0
+          httpTimeoutSeconds: 10
+          logLevel: INFO
+          updateIntervalSeconds: 15
+          updateMaxFailure: 0
+    default-whitelist:
+      ipWhiteList:
+        sourceRange:
+          - 10.0.0.0/8
+          - 192.168.0.0/16
+          - 172.16.0.0/12
     redirect-to-https:
       redirectScheme:
         scheme: https
-
+    security-headers:
+      headers:
+        contentTypeNosniff: true
+        customFrameOptionsValue: SAMEORIGIN
+        customResponseHeaders:
+          Server: ""
+          X-Forwarded-Proto: https
+          X-Powered-By: ""
+        forceSTSHeader: true
+        hostsProxyHeaders:
+          - X-Forwarded-Host
+        referrerPolicy: strict-origin-when-cross-origin
+        sslProxyHeaders:
+          X-Forwarded-Proto: https
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 63072000
   routers:
-    # HTTP to HTTPS redirect router
+    api-router:
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers
+      rule: Host(`pangolin.example.com`) && PathPrefix(`/api/v1`)
+      service: api-service
+      tls:
+        certResolver: letsencrypt
     main-app-router-redirect:
-      rule: "Host(`pangolin.example.com`)" # Frontend URL
-      service: next-service
       entryPoints:
         - web
       middlewares:
         - redirect-to-https
-
-    # Next.js router (handles everything except API and WebSocket paths)
-    next-router:
-      rule: "Host(`pangolin.example.com`) && !PathPrefix(`/api/v1`)" # Frontend URL
+      rule: Host(`pangolin.example.com`)
       service: next-service
+    next-router:
       entryPoints:
         - websecure
+      middlewares:
+        - security-headers
+      rule: Host(`pangolin.example.com`) && !PathPrefix(`/api/v1`)
+      service: next-service
       tls:
         certResolver: letsencrypt
-
-    # API router (handles /api/v1 paths)
-    api-router:
-      rule: "Host(`pangolin.example.com`) && PathPrefix(`/api/v1`)" # Frontend URL
-      service: api-service
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt
-
-    # WebSocket router
+        domains:
+          - main: "example.com"
+            sans:
+              - "*.example.com"
     ws-router:
-      rule: "Host(`pangolin.example.com`)" # Frontend URL
-      service: api-service
       entryPoints:
         - websecure
+      middlewares:
+        - security-headers
+      rule: Host(`pangolin.example.com`)
+      service: api-service
       tls:
         certResolver: letsencrypt
-
   services:
-    next-service:
-      loadBalancer:
-        servers:
-          - url: "http://pangolin:3002"  # Next.js server
-
     api-service:
       loadBalancer:
         servers:
-          - url: "http://pangolin:3000"  # API/WebSocket server
+          - url: http://pangolin:3000
+    next-service:
+      loadBalancer:
+        servers:
+          - url: http://pangolin:3002
