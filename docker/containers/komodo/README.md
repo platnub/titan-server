@@ -55,8 +55,12 @@
    ```
 3. Edit .env file
        - Use `openssl rand -hex 64` for PASSKEY and JWT
-      1. KOMODO_PASSKEY
-      2. KOMODO_HOST
-      3. KOMODO_JWT_SECRET
+      1. PUID
+      2. PGID
+      3. KOMODO_HOST
+      4. KOMODO_PASSKEY
+      5. KOMODO_JWT_SECRET
   
-4. 
+4. ```
+   docker compose up -d
+   ```
