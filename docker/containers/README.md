@@ -6,15 +6,19 @@
  - VOLUMES
     1. Whatever
  - SERVICES
-    1. f
-    2. g
-    3. h
-9. i
-10. j
-11. k
-12. l
-13. m
-14. n
-15. o
-16. p
-17. 
+    1. name
+    2. image
+    3. restart
+    4. security_opt
+    5. cap_add
+    6. read_only
+    7. user
+    8. networks
+    9. ports
+    10. volumes
+    11. command
+    12. tmpfs
+    13. healthcheck
+    14. depends_on
+    15. environment
+    16. labels
