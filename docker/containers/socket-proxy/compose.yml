@@ -4,7 +4,7 @@
 networks:
   default:
     driver: bridge
-  socket_proxy:
+  socket-proxy:
     name: socket-proxy
     driver: bridge
     ipam:
