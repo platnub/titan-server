@@ -289,3 +289,5 @@
 23. Connect resources
     <img width="1301" height="107" alt="image" src="https://github.com/user-attachments/assets/e3ced54c-8496-4702-ad27-f76ad1b34243" />
 
+# Follow up
+ - https://integrations.goauthentik.io/networking/pangolin/
