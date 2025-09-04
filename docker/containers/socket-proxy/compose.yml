@@ -27,7 +27,7 @@ services:
     # ports:
       #- "2375:2375"
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     read_only: true
     tmpfs:
       - /run
