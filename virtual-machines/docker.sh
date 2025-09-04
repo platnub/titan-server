@@ -374,16 +374,13 @@ function advanced_settings() {
   else
     exit-script
   fi
-  if FILE_CACHING=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "IMPROVE FILE CACHING" --yesno --defaultno "Improve file caching for file servers? (Nextcloud, Jellyfin/Plex?" 10 58); then
-      echo -e "${GATEWAY}${BOLD}${DGN}Improve file caching: ${BGN}yes${CL}"
-      FILE_CACHING="yes"
+    if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "IMPROVE FILE CACHING" --yesno --defaultno "Improve file caching for file servers? (Nextcloud, Jellyfin/Plex?" 10 58); then
+        echo -e "${GATEWAY}${BOLD}${DGN}Improve file caching: ${BGN}yes${CL}"
+        FILE_CACHING="yes"
     else
-      echo -e "${GATEWAY}${BOLD}${DGN}Improve file caching: ${BGN}no${CL}"
-      FILE_CACHING="no"
+        echo -e "${GATEWAY}${BOLD}${DGN}Improve file caching: ${BGN}no${CL}"
+        FILE_CACHING="no"
     fi
-  else
-    exit-script
-  fi
 
   if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "START VIRTUAL MACHINE" --yesno "Start VM when completed?" 10 58); then
     echo -e "${GATEWAY}${BOLD}${DGN}Start VM when completed: ${BGN}yes${CL}"
