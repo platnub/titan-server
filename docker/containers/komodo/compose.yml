@@ -21,7 +21,7 @@ services:
       komodo.skip: # Prevent Komodo from stopping with StopAllContainers
     command: --quiet --wiredTigerCacheSizeGB 0.25
     restart: always
-    user: $PUID:$PGID
+    user: ${PUID}:${PGID}
     networks:
       - komodo
     # ports:
@@ -37,7 +37,7 @@ services:
     labels:
       komodo.skip: # Prevent Komodo from stopping with StopAllContainers
     restart: always
-    user: $PUID:$PGID
+    user: ${PUID}:${PGID}
     depends_on:
       - mongo
     networks:
@@ -71,7 +71,7 @@ services:
     labels:
       komodo.skip: # Prevent Komodo from stopping with StopAllContainers
     restart: always
-    user: $PUID:$PGID
+    user: ${PUID}:${PGID}
     networks:
       - socket_proxy
       - komodo
