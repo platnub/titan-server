@@ -8,7 +8,7 @@
 
 # Host configuration script
 
-‼️ Do not run if preparing [Pangolin host](https://github.com/platnub/titan-server/blob/main/docker/containers/pangolin)
+‼️ Do not run if creating [Pangolin host](https://github.com/platnub/titan-server/blob/main/docker/containers/pangolin)
 
 1. ```
    curl -fsSL https://github.com/platnub/titan-server/blob/main/docker/setup.sh
