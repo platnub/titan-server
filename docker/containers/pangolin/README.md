@@ -22,7 +22,7 @@
 
 ‼️ Replace <ssh_port>
 
-‼️ It will prompt you to set the "pangolin-service" (sudo) password when finished
+‼️ It will prompt you to set the "pangolin" (sudo) password when finished
 
 1. ```
    # Install SSH and UFW
