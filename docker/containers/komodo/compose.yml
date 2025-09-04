@@ -21,6 +21,7 @@ services:
       komodo.skip: # Prevent Komodo from stopping with StopAllContainers
     command: --quiet --wiredTigerCacheSizeGB 0.25
     restart: always
+    user: $PUID:$PGID
     networks:
       - komodo
     # ports:
@@ -28,9 +29,6 @@ services:
     volumes:
       - $CONTAINERDIR/appdata/mongo-data:/data/db
       - $CONTAINERDIR/appdata/mongo-config:/data/configdb
-    environment:
-      PUID: $PUID
-      GUID: $PGID
       MONGO_INITDB_ROOT_USERNAME: ${KOMODO_DB_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${KOMODO_DB_PASSWORD}
   
@@ -39,6 +37,7 @@ services:
     labels:
       komodo.skip: # Prevent Komodo from stopping with StopAllContainers
     restart: always
+    user: $PUID:$PGID
     depends_on:
       - mongo
     networks:
@@ -72,6 +71,7 @@ services:
     labels:
       komodo.skip: # Prevent Komodo from stopping with StopAllContainers
     restart: always
+    user: $PUID:$PGID
     networks:
       - socket_proxy
       - komodo
@@ -81,7 +81,7 @@ services:
       GUID: $PGID
     volumes:
       ## Mount external docker socket
-      - /var/run/docker.sock:/var/run/docker.sock
+      # - /var/run/docker.sock:/var/run/docker.sock
       ## Allow Periphery to see processes outside of container
       - /proc:/proc
       ## Specify the Periphery agent root directory.
