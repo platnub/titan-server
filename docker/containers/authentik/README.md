@@ -17,15 +17,15 @@
 ## Cloudflare Turnstile Captchas _[source](https://www.youtube.com/watch?v=Fe5SttNa2lU)_
 1. Create Turnstile widget on [Cloudflare](https://dash.cloudflare.com/)
 2. Create new Stage in Authentik
-  1. Captcha Stage
-  2. Name `cloudflare-turnstile`
-  3. Public and Private key from Turnstile widget created in step 1
-  4. Interactive: Enabled
-  5. Advanced settings:
-     - JS URL: https://challenges.cloudflare.com/turnstile/v0/api.js
-     - API URL: https://challenges.cloudflare.com/turnstile/v0/siteverify
+    1. Captcha Stage
+    2. Name `cloudflare-turnstile`
+    3. Public and Private key from Turnstile widget created in step 1
+    4. Interactive: Enabled
+    5. Advanced settings:
+       - JS URL: https://challenges.cloudflare.com/turnstile/v0/api.js
+       - API URL: https://challenges.cloudflare.com/turnstile/v0/siteverify
 3. Select main authentication Flow in Authentik (default-authentication-flow)
-  1. Select Stage Binding
-  2. Bind existing stage
-  3. Select Captcha stage `cloudflare-turnstile`
-  4. Order 15
+    1. Select Stage Binding
+    2. Bind existing stage
+    3. Select Captcha stage `cloudflare-turnstile`
+    4. Order 15
