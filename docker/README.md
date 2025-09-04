@@ -1,6 +1,6 @@
 # ‼️ Requirements for **EVERY** docker container
  1. Configuration script below
-   - Pangolin host is the only exception
+     - Pangolin host is the only exception
  2. User account created
  3. A healthy mindset
 
