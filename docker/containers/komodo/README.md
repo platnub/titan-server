@@ -2,23 +2,16 @@
 1. Proxmox processor type = host
 2. Socket proxy
 
-# .env variables to configure
-Use `openssl rand -hex 64` for PASSKEY and JWT
-1. KOMODO_PASSKEY
-2. KOMODO_HOST
-3. KOMODO_JWT_SECRET
-4. KOMODO_MONITORING_INTERVAL="1-sec"
-
 # Installation steps
+
+‼️ It will prompt you to set the "komodo-service" user password when finished
+
 1. ```
    # Install SSH and UFW
    apt-get update -y && apt-get upgrade -y
    apt-get install ssh -y
    apt-get install fail2ban -y
    apt-get install ufw -y
-   
-   # Configure users
-   useradd --create-home komodo
    
    # Change SSH port, disable IPv6, Setup UFW firewall
    sed -i 's/\#Port 22/Port <ssh_port> /' /etc/ssh/sshd_config
@@ -46,17 +39,24 @@ Use `openssl rand -hex 64` for PASSKEY and JWT
    apt update -y
    apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
    
-   # Create folders
+   # Create user and folders
+   useradd --create-home komodo-service
    mkdir /opt/docker
-   chown komodo:komodo /opt/docker
+   chown komodo-service:komodo-service /opt/docker
    chmod 700 /opt/docker
-   usermod -aG docker komodo
-   passwd komodo
+   usermod -aG docker komodo-service
+   passwd komodo-service
    ```
-
-# Useful commands
-```
-useradd --create-home komodo
-usermod -aG docker komodo
-passwd -l komodo
-```
+2. Create komodo container
+   ```
+   mkdir /opt/docker/komodo
+   wget https://github.com/platnub/container-host-templates/blob/main/docker/containers/komodo/.env
+   wget https://github.com/platnub/container-host-templates/blob/main/docker/containers/komodo/compose.yml
+   ```
+3. Edit .env file
+       - Use `openssl rand -hex 64` for PASSKEY and JWT
+      1. KOMODO_PASSKEY
+      2. KOMODO_HOST
+      3. KOMODO_JWT_SECRET
+  
+4. 
