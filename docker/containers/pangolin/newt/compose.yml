@@ -11,7 +11,7 @@ services:
     image: fosrl/newt
     container_name: newt-<name>
     restart: always
-    user: 1000:1000
+    user: ${PUID}:${PGID}
     environment:
       PANGOLIN_ENDPOINT: $PANGOLIN_ENDPOINT
       NEWT_ID: $NEWT_ID
