@@ -1,6 +1,5 @@
 # Requirements
-1. Proxmox processor type = host
-2. Socket proxy
+1. Proxmox processor set to "Type: host"
 
 # Installation steps
 
