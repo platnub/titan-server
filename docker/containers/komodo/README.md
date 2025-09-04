@@ -50,7 +50,7 @@
 2. Create komodo container
    ```
    mkdir /opt/docker/komodo && cd /opt/docker/komodo
-   curl -o compose.yml "https://raw.githubusercontent.com/platnub/container-host-templates/refs/heads/main/docker/containers/komodo/.env"
+   curl -o compose.yml "https://raw.githubusercontent.com/platnub/container-host-templates/refs/heads/main/docker/containers/komodo/compose.yml"
    curl -o .env "https://raw.githubusercontent.com/platnub/container-host-templates/refs/heads/main/docker/containers/komodo/.env"
    ```
 3. Edit .env file
