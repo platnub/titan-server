@@ -29,6 +29,7 @@ services:
     volumes:
       - $CONTAINERDIR/appdata/mongo-data:/data/db
       - $CONTAINERDIR/appdata/mongo-config:/data/configdb
+    environment:
       MONGO_INITDB_ROOT_USERNAME: ${KOMODO_DB_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${KOMODO_DB_PASSWORD}
   
