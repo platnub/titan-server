@@ -14,6 +14,8 @@
    - Geoblock
  - Sets up DigitalOcean VPS host SSH port
  - Creates users
+   - pangolin - sudo
+   - komodo - komodo engine user with docker group
  - Disables IPv6
 
 ⚠️ Incase anything goes wrong, example files are in the config folder.
@@ -65,7 +67,6 @@
    useradd -r pangolin
    usermod -aG sudo pangolin
    passwd -l root
-   useradd -r pangolin-service
    useradd --create-home komodo
    mkdir /opt/docker
    chown komodo:komodo /opt/docker
@@ -78,12 +79,6 @@
 
    ```
    passwd komodo
-   ```
-
-‼️ Set user "pangolin-service" password
-
-   ```
-   passwd pangolin-service
    ```
 
 ‼️ Login as user "komodo"
