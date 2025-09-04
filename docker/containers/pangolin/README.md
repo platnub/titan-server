@@ -1,4 +1,4 @@
-[03-09-2025]
+[04-09-2025]
 ## Requirements
  - Komodo core server
  - Domain managed through Cloudflare
