@@ -18,7 +18,7 @@
     10. volumes
     11. command
     12. tmpfs
-    13. healthcheck
-    14. depends_on
-    15. environment
-    16. labels
+    13. environment
+    14. labels
+    15. healthcheck
+    16. depends_on
