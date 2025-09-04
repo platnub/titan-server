@@ -62,16 +62,16 @@
    apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
    
    # Create users and folders
-   useradd -r pangolin-service
-   usermod -aG sudo pangolin-service
-   passwd -l root
    useradd -r pangolin
+   usermod -aG sudo pangolin
+   passwd -l root
+   useradd -r pangolin-service
    useradd --create-home komodo
    mkdir /opt/docker
    chown komodo:komodo /opt/docker
    chmod 700 /opt/docker
    usermod -aG docker komodo
-   passwd pangolin-service
+   passwd pangolin
    ```
 
 ‼️ Set user "komodo" password
@@ -80,10 +80,10 @@
    passwd komodo
    ```
 
-‼️ Set user "pangolin" password
+‼️ Set user "pangolin-service" password
 
    ```
-   passwd pangolin
+   passwd pangolin-service
    ```
 
 ‼️ Login as user "komodo"
@@ -122,7 +122,7 @@
 
 ℹ️ Start the Pangolin install using instructions from [Pangolin](https://docs.digpangolin.com/self-host/quick-install)
 
-‼️ Log back into sudo (pangolin-service) account and `sudo su`
+‼️ Log back into sudo (pangolin) account and `sudo su`
 
 ‼️ Follow installer instructions
  - [Optional] Email setup
