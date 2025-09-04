@@ -2,7 +2,7 @@
 networks:
   authentik:
     name: authentik
-  socket_proxy:
+  socket-proxy:
     external: true
 
 ########################### VOLUMES
@@ -88,6 +88,7 @@ services:
     user: ${PUID}:${PGID}
     networks:
       authentik:
+      socket-proxy:
     command: worker
     env_file:
     - .env
