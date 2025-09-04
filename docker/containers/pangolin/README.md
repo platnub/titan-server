@@ -28,13 +28,6 @@
    apt-get install ssh -y
    apt-get install fail2ban -y
    apt-get install ufw -y
-   
-   # Configure users
-   useradd -r pangolin-service
-   usermod -aG sudo pangolin-service
-   passwd -l root
-   useradd -r pangolin
-   useradd --create-home komodo
 
    # Change SSH port, disable IPv6, Setup UFW firewall
    sed -i 's/\#Port 22/Port <ssh_port> /' /etc/ssh/sshd_config
@@ -68,7 +61,12 @@
    apt update -y
    apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
    
-   # Create folders
+   # Create users and folders
+   useradd -r pangolin-service
+   usermod -aG sudo pangolin-service
+   passwd -l root
+   useradd -r pangolin
+   useradd --create-home komodo
    mkdir /opt/docker
    chown komodo:komodo /opt/docker
    chmod 700 /opt/docker
