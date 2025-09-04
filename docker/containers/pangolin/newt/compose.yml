@@ -1,8 +1,8 @@
 ########################### NETWORKS
 networks:
-  authentik_default:
+  authentik:
     external: true
-  vaultwarden_default:
+  vaultwarden:
     external: true
 
 ########################### SERVICES
