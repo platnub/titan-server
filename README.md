@@ -1,3 +1,11 @@
+# Info
+ - Komodo management backend
+ - Pangolin reverse proxy frontend
+   - Geoblocking
+   - CrowdSec + CrowdSec Firewall Bouncer
+ - Full VM & OS installation and configuration scripts
+ - Authentik SSO system-wide integration including for Pangolin authentication
+
 # Install a VM
  - [Docker](https://github.com/platnub/titan-server/tree/main/virtual-machines)
 
