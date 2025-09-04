@@ -280,4 +280,9 @@
     sed -i '/^  ipv6:/,/^    enabled:/ s/^    enabled: true/    enabled: false/' /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
     ```
 19. Destroy and deploy the stack in Komodo
-20. Read the Setup Token from the Pangolin container log
+20. Read the Setup Token from the Pangolin container log and go to https://pangolin.example.com/auth/initial-setup
+21. Create organization with default settings
+22. Create site and link it to a [Newt container](https://github.com/platnub/container-host-templates/tree/main/docker/containers/pangolin/newt)
+23. Connect resources
+    <img width="1301" height="107" alt="image" src="https://github.com/user-attachments/assets/e3ced54c-8496-4702-ad27-f76ad1b34243" />
+
