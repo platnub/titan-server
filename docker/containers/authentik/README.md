@@ -10,4 +10,5 @@
 "AUTHENTIK_SECRET_KEY=$(openssl rand -base64 60 | tr -d '\n')"
 ```
 3. Fill in the rest of the .env variables
+   - Fill in reverse proxy CIDN if needed `AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS`
 4. Deploy the stack and go to authentik.example.com/if/flow/initial-setup/
