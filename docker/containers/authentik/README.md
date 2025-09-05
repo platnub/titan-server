@@ -27,9 +27,8 @@
        - API URL: https://challenges.cloudflare.com/turnstile/v0/siteverify
 3. Select main authentication Flow in Authentik (default-authentication-flow)
     1. Select Stage Binding
-    2. Bind existing stage
+    2. Edit Stage `default-authentication-identification`
     3. Select Captcha stage `cloudflare-turnstile`
-    4. Order 5
 ## Passwordless Login _[source](https://www.youtube.com/watch?v=aEpT2fYGwLw)_
 1. 
 ## Enrollment & Invitations _[source](https://www.youtube.com/watch?v=mGOTpRfulfQ)_
