@@ -29,7 +29,7 @@
     1. Select Stage Binding
     2. Bind existing stage
     3. Select Captcha stage `cloudflare-turnstile`
-    4. Order 15
+    4. Order 5
 ## Passwordless Login _[source](https://www.youtube.com/watch?v=aEpT2fYGwLw)_
 1. 
 ## Enrollment & Invitations _[source](https://www.youtube.com/watch?v=mGOTpRfulfQ)_
