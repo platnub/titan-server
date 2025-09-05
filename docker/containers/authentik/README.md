@@ -15,6 +15,8 @@
 
 # Extra guides
 [Terminology - Flows and Stages](https://www.youtube.com/watch?v=qicoDc2vVsQ&list=PLH73rprBo7vSkDq-hAuXOoXx2es-1ExOP&index=25)
+## Hiding applications
+ - Set launch URL to `blank://blank` to hide an application
 ## Cloudflare Turnstile Captchas _[source](https://www.youtube.com/watch?v=Fe5SttNa2lU)_
 1. Create Turnstile widget on [Cloudflare](https://dash.cloudflare.com/)
 2. Create new Stage in Authentik
