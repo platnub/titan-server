@@ -1,5 +1,5 @@
 # Ask for allowed IPs
-read -p "Enter the allowed IPs (comma separated, e.g., 1.2.3.0/24,1.2.3.4): " allowed_ips
+read -p "Enter the allowed IPs (comma separated, e.g., \"1.2.3.0/24\",\"1.2.3.4\"): " allowed_ips
 
 # Ask for passkey
 read -p "Enter the passkey: " passkey
