@@ -1,5 +1,6 @@
 #!/bin/bash
 
+sudo su
 # Install SSH and UFW
 echo "Updating system packages..."
 apt-get update -y && apt-get upgrade -y
