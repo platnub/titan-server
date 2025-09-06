@@ -10,7 +10,7 @@
  - [Docker](https://github.com/platnub/titan-server/tree/main/virtual-machines)
 
 # Configure VM
- - [Docker engine & Komodo mangement](https://github.com/platnub/titan-server/blob/main/docker/setup.sh)
+ - [Docker engine & Komodo mangement](https://github.com/platnub/container-host-templates/blob/main/docker/README.md)
 
 # Install containers
  - Docker - Core
