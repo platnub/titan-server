@@ -1,10 +1,18 @@
 # Useful Commands
- - Update komodo clients (NOT HOST)
+## Update komodo Clients (NOT CORE)
 ```
 cd /home/komodo
 curl -sSL https://raw.githubusercontent.com/moghtech/komodo/main/scripts/setup-periphery.py | python3 - --user
 systemctl --user status periphery
 
+```
+
+## Update Komodo Core
+```
+cd /opt/docker/komodo
+docker compose pull
+docker compose down
+docker compose up -d
 ```
 
 # Requirements
