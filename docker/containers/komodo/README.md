@@ -1,8 +1,3 @@
-# Useful commands
-```
-systemctl --user update periphery
-```
-
 # Requirements
 1. Proxmox processor set to "Type: host"
 
