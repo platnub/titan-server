@@ -1,5 +1,3 @@
-sudo su
-
 # Install SSH and UFW
 apt-get update -y && apt-get upgrade -y
 apt-get install ssh -y
