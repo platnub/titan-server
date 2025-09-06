@@ -58,8 +58,6 @@ usermod -aG docker komodo
 echo "-----------------------------------------------------------------------------"
 echo "Setting password for komodo user..."
 echo "You will now be prompted to set a password for the komodo user."
-echo "Please choose a strong password and remember it as you'll need it to log in."
-echo "-----------------------------------------------------------------------------"
 passwd komodo
 
 # Get allowed IPs from user
