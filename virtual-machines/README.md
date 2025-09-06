@@ -9,6 +9,8 @@
 2. Connect to the VM through SSH port 22 using sudo user
 3.  ```
     sudo su
+    ```
+    ```
     bash -c "$(curl -fsSL https://raw.githubusercontent.com/platnub/container-host-templates/refs/heads/main/docker/setup.sh)"
     ```
 4. Connect to the VM through SSH using the komodo user
