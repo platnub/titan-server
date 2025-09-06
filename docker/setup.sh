@@ -1,9 +1,3 @@
-# Install SSH and UFW
-apt-get update -y && apt-get upgrade -y
-apt-get install ssh -y
-apt-get install fail2ban -y
-apt-get install ufw -y
-
 # Ask for allowed IPs
 read -p "Enter the allowed IPs (comma separated, e.g., 1.2.3.0/24,1.2.3.4): " allowed_ips
 
@@ -16,6 +10,12 @@ echo "--------------------------------------------------------------------------
 echo "Setting password for komodo user..."
 echo "You will now be prompted to set a password for the komodo user."
 passwd komodo
+
+# Install SSH and UFW
+apt-get update -y && apt-get upgrade -y
+apt-get install ssh -y
+apt-get install fail2ban -y
+apt-get install ufw -y
 
 # Change SSH port, disable IPv6, Setup UFW firewall
 
