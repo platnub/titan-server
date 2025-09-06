@@ -1,3 +1,9 @@
+# Useful Commands
+ - Update komodo clients (NOT HOST)
+```
+systemctl --user update periphery
+```
+
 # Requirements
 1. Proxmox processor set to "Type: host"
 
