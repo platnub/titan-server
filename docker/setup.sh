@@ -8,7 +8,6 @@ read -p "Enter the passkey: " passkey
 useradd --create-home komodo
 echo "-----------------------------------------------------------------------------"
 echo "Setting password for komodo user..."
-echo "You will now be prompted to set a password for the komodo user."
 passwd komodo
 
 # Install SSH and UFW
