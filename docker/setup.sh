@@ -3,8 +3,20 @@ apt-get update -y && apt-get upgrade -y
 apt-get install ssh -y
 apt-get install fail2ban -y
 apt-get install ufw -y
-# Configure users
+
+# Ask for allowed IPs
+read -p "Enter the allowed IPs (comma separated, e.g., 1.2.3.0/24,1.2.3.4): " allowed_ips
+
+# Ask for passkey
+read -p "Enter the passkey: " passkey
+
+# Configure komodo user
 useradd --create-home komodo
+echo "-----------------------------------------------------------------------------"
+echo "Setting password for komodo user..."
+echo "You will now be prompted to set a password for the komodo user."
+passwd komodo
+
 # Change SSH port, disable IPv6, Setup UFW firewall
 
 # Ask for SSH port
@@ -38,18 +50,6 @@ mkdir /opt/docker
 chown komodo:komodo /opt/docker
 chmod 700 /opt/docker
 usermod -aG docker komodo
-
-# Ask for allowed IPs
-read -p "Enter the allowed IPs (comma separated, e.g., 1.2.3.0/24,1.2.3.4): " allowed_ips
-
-# Ask for passkey
-read -p "Enter the passkey: " passkey
-
-# Set komodo password
-echo "-----------------------------------------------------------------------------"
-echo "Setting password for komodo user..."
-echo "You will now be prompted to set a password for the komodo user."
-passwd komodo
 
 # Download and create config file
 mkdir -p /home/komodo/.config/komodo && cd /home/komodo/.config/komodo && curl -o ./periphery.config.toml https://raw.githubusercontent.com/moghtech/komodo/refs/heads/main/config/periphery.config.toml
