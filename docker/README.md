@@ -33,5 +33,6 @@
 
 ```
 useradd -r <container-name>
+passwd -l <container-name>
 id <conatiner-name>
 ```
