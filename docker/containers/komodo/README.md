@@ -3,7 +3,6 @@
 ```
 cd /home/komodo
 curl -sSL https://raw.githubusercontent.com/moghtech/komodo/main/scripts/setup-periphery.py | python3 - --user
-#systemctl --user enable periphery
 systemctl --user status periphery
 ```
 
