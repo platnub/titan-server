@@ -6,4 +6,4 @@
     ```
     bash -c "$(curl -fsSL https://raw.githubusercontent.com/platnub/titan-server/refs/heads/main/virtual-machines/docker.sh)"
     ```
-2. 
+2. Continue configuration for docker [here](https://github.com/platnub/container-host-templates/blob/main/docker/README.md)
